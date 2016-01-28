@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Export generator="Cache" version="25">
+<Class name="Demo.RulesBuilder.SavedRule">
+<Description>
+Not yet in use</Description>
+<Super>%Persistent</Super>
+<TimeCreated>63896,50627.74869</TimeCreated>
+
+<Property name="DomainId">
+<Type>%Integer</Type>
+</Property>
+
+<Property name="DocumentName">
+<Type>%String</Type>
+<Parameter name="MAXLEN" value="2000"/>
+</Property>
+
+<Property name="ExtractionResult">
+<Type>ExtractionResult</Type>
+</Property>
+
+<Property name="RuleText">
+<Type>%String</Type>
+<Parameter name="MAXLEN" value="2000"/>
+</Property>
+
+<Property name="Comments">
+<Type>%String</Type>
+<Parameter name="MAXLEN"/>
+</Property>
+
+<Property name="Paragraph">
+<Type>Paragraph</Type>
+</Property>
+
+<Index name="DomDocIdx">
+<Properties>DomainId,DocumentName</Properties>
+</Index>
+
+<ForeignKey name="ExtractionResultFK">
+<OnDelete>cascade</OnDelete>
+<Properties>ExtractionResult</Properties>
+<ReferencedClass>ExtractionResult</ReferencedClass>
+</ForeignKey>
+
+<ForeignKey name="ParagraphFK">
+<OnDelete>cascade</OnDelete>
+<Properties>Paragraph</Properties>
+<ReferencedClass>Paragraph</ReferencedClass>
+</ForeignKey>
+
+<Storage name="Default">
+<Type>%Library.CacheStorage</Type>
+<DataLocation>^Demo.RulesBuilder.SavedRuleD</DataLocation>
+<DefaultData>SavedRuleDefaultData</DefaultData>
+<IdLocation>^Demo.RulesBuilder.SavedRuleD</IdLocation>
+<IndexLocation>^Demo.RulesBuilder.SavedRuleI</IndexLocation>
+<StreamLocation>^Demo.RulesBuilder.SavedRuleS</StreamLocation>
+<Data name="SavedRuleDefaultData">
+<Value name="1">
+<Value>%%CLASSNAME</Value>
+</Value>
+<Value name="2">
+<Value>DomainId</Value>
+</Value>
+<Value name="3">
+<Value>DocumentName</Value>
+</Value>
+<Value name="4">
+<Value>ExtractionResult</Value>
+</Value>
+<Value name="5">
+<Value>RuleText</Value>
+</Value>
+<Value name="6">
+<Value>Comments</Value>
+</Value>
+<Value name="7">
+<Value>Paragraph</Value>
+</Value>
+</Data>
+</Storage>
+</Class>
+</Export>

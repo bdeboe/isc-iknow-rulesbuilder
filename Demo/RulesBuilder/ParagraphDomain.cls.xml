@@ -1,0 +1,551 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Export generator="Cache" version="25">
+<Class name="Demo.RulesBuilder.ParagraphDomain">
+<ProcedureBlock>1</ProcedureBlock>
+<Super>%iKnow.DomainDefinition</Super>
+<TimeCreated>63886,42806.772146</TimeCreated>
+
+<Method name="LoadDocument">
+<ClassMethod>1</ClassMethod>
+<FormalSpec>pDocumentName:%String</FormalSpec>
+<ReturnType>%Status</ReturnType>
+<Implementation><![CDATA[
+	set tSC = $$$OK
+	try {
+		set tDomainId = ..%GetDomainId()
+		set tDomainName = ..%GetDomainName()
+		
+		// first drop old sources
+		set tDocFilter = ##class(%iKnow.Filters.SimpleMetadataFilter).%New(tDomainId,"DocumentName","=",pDocumentName)
+		do ##class(%iKnow.Queries.SourceAPI).GetByDomain(.tSources, tDomainId, 0, 0, tDocFilter)
+		set i=""
+		for {
+			set i = $order(tSources(i),1,tSrcData)
+			quit:i=""
+			set tSC = $system.iKnow.DeleteSource(tDomainName, $lg(tSrcData,1))
+			quit:$$$ISERR(tSC)
+		}
+		quit:$$$ISERR(tSC)
+		
+		
+		// index new records and match
+		set tSC = $system.iKnow.IndexTable(tDomainName, "Demo_RulesBuilder.Paragraph", "ID", "DocumentName", "FullTextContents", $lb("DocumentName","FullKey"), "DocumentName = '"_pDocumentName_"'")
+		quit:$$$ISERR(tSC)
+		
+		set tSC = ##class(%iKnow.Matching.MatchingAPI).MatchSources(tDomainId, tDocFilter)
+		quit:$$$ISERR(tSC)
+		
+		/* set metadata fields
+		set tStatement = ##class(%SQL.Statement).%New()
+		set tSC = tStatement.%Prepare("SELECT ID, Parent->ID ParentID FROM Demo_RulesBuilder.Paragraph WHERE DocumentName = ?")
+		quit:$$$ISERR(tSC)
+		set tResult = tStatement.%Execute(pDocumentName)
+		while tResult.%Next() {
+			set tID = 
+		}
+		quit:$$$ISERR(tSC)
+		*/
+		
+		
+	} catch (ex) {
+		set tSC = ex.AsStatus()
+	}
+	quit tSC
+]]></Implementation>
+</Method>
+
+<Method name="GetParentSourceId">
+<ClassMethod>1</ClassMethod>
+<FormalSpec>pSourceId:%Integer</FormalSpec>
+<ReturnType>%Integer</ReturnType>
+<Implementation><![CDATA[
+	set tExternalId = $system.iKnow.GetExternalId(..%GetDomainName(), pSourceId)
+	quit:tExternalId="" ""
+	set tParagraphID = $piece(tExternalId,":",*), tParentID = ""
+	&SQL(SELECT Parent->ID INTO :tParentID FROM Demo_RulesBuilder.Paragraph WHERE ID = :tParagraphID)
+	quit:SQLCODE ""
+	set tDocumentName = ##class(%iKnow.Queries.MetadataAPI).GetValue(..%GetDomainId(), "DocumentName", tExternalId)
+	quit $system.iKnow.GetSourceId(..%GetDomainName(), ":SQL:"_tDocumentName_":"_tParentID)
+]]></Implementation>
+</Method>
+
+<Method name="GetDocumentName">
+<ClassMethod>1</ClassMethod>
+<FormalSpec>pSourceId:%Integer</FormalSpec>
+<ReturnType>%String</ReturnType>
+<Implementation><![CDATA[
+	set tFieldId = ##class(%iKnow.Queries.MetadataAPI).GetFieldId(..%GetDomainId(), "DocumentName")
+	quit:'tFieldId ""
+	quit ##class(%iKnow.Queries.MetadataAPI).GetValueById(..%GetDomainId(), tFieldId, pSourceId)
+]]></Implementation>
+</Method>
+
+<XData name="Domain">
+<XMLNamespace>http://www.intersystems.com/iknow</XMLNamespace>
+<Data><![CDATA[
+<domain name="RulesBuilder Paragraphs" disabled="false" allowCustomUpdates="true">
+<parameter name="DefaultConfig" value="RulesBuilder Paragraphs.Configuration" isList="false" />
+<parameter name="$$$IKPMATSKIPRELATIONS" value="0" />
+<data dropBeforeBuild="false">
+<!--table listname="Table_1" batchMode="true" disabled="false" listerClass="%iKnow.Source.SQL.Lister" tableName="Demo_RulesBuilder.Paragraph" idField="FullKey" groupField="DocumentName" dataFields="FullTextContents" metadataColumns="DocumentName" metadataFields="DocumentName" /-->
+</data>
+<metadata>
+<field name="DocumentName" operators="=" dataType="STRING" storage="1" caseSensitive="false" disabled="false" />
+<field name="FullKey" operators="=" dataType="STRING" storage="1" caseSensitive="false" disabled="false" />
+<field name="SomeOperators" operators="=,&lt;" />
+<field name="MoreOperators" operators="ALL" />
+</metadata>
+<configuration name="RulesBuilder Paragraphs.Configuration" detectLanguage="false" languages="en" summarize="true" maxConceptLength="0" />
+
+<matching dropBeforeBuild="false" defaultProfile="ZeroThresholds">
+
+<profile name="ZeroThresholds" minimalMatchScore="0.01" relationshipScoreMultiplier="1" />
+
+<dictionary name="Base rules">
+<item name="lending" uri=":trading:lending">
+<term string="lending	" />
+</item>
+<item name="may purchase" uri=":rule:may-purchase">
+<term string="may purchase" />
+<term string="may invest" />
+<term string="may hold" />
+<term string="may purchase or hold" />
+</item>
+<item name="permitted" uri=":trading:permitted">
+<term string="permitted" />
+</item>
+<item name="prohibited" uri=":trading:prohibited">
+<term string="prohibited" />
+</item>
+<item name="allowed" uri=":trading:allowed">
+<term string="allowed" />
+</item>
+<item name="portfolio composed of" uri=":rule:composed-of" >
+<term string="portfolio will be composed of" />
+</item>
+</dictionary>
+
+<dictionary name="Reporting">
+<item name="written approval" uri=":rule:written approval">
+<term string="designating in writing" />
+</item>
+</dictionary>
+
+<dictionary name="Flags">
+<item name="only" uri=":flags:only">
+<term string="only" />
+</item>
+<item name="unless" uri=":flags:unless">
+<term string="unless" />
+</item>
+<item name="other" uri=":flags:other">
+<term string="other" />
+</item>
+<item name="including" uri=":flags:including">
+<term string="including" />
+</item>
+<item name="excluding" uri=":flags:excluding">
+<term string="excluding" />
+</item>
+</dictionary>
+
+<dictionary name="Logic" >
+<item name="excluding" uri=":logic:excluding">
+<term string="excluding" />
+<term string="exclusive" />
+<term string="excl" />
+</item>
+<item name="including" uri=":logic:including">
+<term string="including" />
+<term string="inclusive" />
+<term string="incl" />
+</item>
+<item name="greater than" uri=":logic:greater-than">
+<term string="greater than" />
+<term string="minimum" />
+<term string="more than" />
+<term string="min" />
+<term string="at least" />
+<term string="above" />
+</item>
+<item name="less than" uri=":logic:less-than">
+<term string="at most" />
+<term string="less than" />
+<term string="maximum" />
+<term string="max" />
+<term string="up to" />
+<term string="u p t o" />
+<term string="below" />
+</item>
+<item name="between" uri=":logic:between">
+<term string="between" />
+</item>
+</dictionary>
+
+<dictionary name="Numerics">
+<item name="percentage" uri=":num:percentage">
+<format formatClass="%iKnow.Matching.Formats.RegularExpression" formatParams="(.*[^0-9])?([0-9\.]+) ?%.*,$2%" />
+</item>
+<!--item name="rating" uri=":num:rating">
+<format formatClass="%iKnow.Matching.Formats.RegularExpression" formatParams="(.*[^abcd])?([abcd]+[0123]?).*,$2" />
+</item-->
+</dictionary>
+
+<dictionary name="Other">
+<item name="rated at" uri=":other:rated">
+<term string="rated at" />
+<term string="rated" />
+<term string="rating" />
+</item>
+</dictionary>
+
+<dictionary name="Rating">
+<item name="rated AAA" uri=":rating:aaa">
+<term string="AAA" />
+</item>
+<item name="rated AA" uri=":rating:aa">
+<term string="AA" />
+<term string="AA1" />
+<term string="AA2" />
+<term string="AA3" />
+</item>
+<item name="rated A" uri=":rating:a">
+<term string="A" />
+<term string="A1" />
+<term string="A2" />
+<term string="A3" />
+<term string="A-1" />
+<term string="A-2" />
+<term string="A-3" />
+</item>
+<item name="rated BAA" uri=":rating:baa">
+<term string="BAA" />
+<term string="BAA1" />
+<term string="BAA2" />
+<term string="BAA3" />
+</item>
+<item name="rated BBB" uri=":rating:bbb">
+<term string="BBB" />
+</item>
+<item name="rated BA" uri=":rating:ba">
+<term string="BA" />
+<term string="BA1" />
+<term string="BA2" />
+<term string="BA3" />
+</item>
+<item name="rated BB" uri=":rating:bb">
+<term string="BB" />
+</item>
+<item name="rated B" uri=":rating:b">
+<term string="B" />
+<term string="B1" />
+<term string="B2" />
+<term string="B3" />
+</item>
+<item name="rated CAA" uri=":rating:caa">
+<term string="CAA" />
+<term string="CAA1" />
+<term string="CAA2" />
+<term string="CAA3" />
+</item>
+<item name="rated CCC" uri=":rating:ccc">
+<term string="CCC" />
+</item>
+<item name="rated CA" uri=":rating:ca">
+<term string="CA" />
+</item>
+<item name="rated CC" uri=":rating:cc">
+<term string="CC" />
+</item>
+<item name="rated C" uri=":rating:c">
+<term string="C" />
+</item>
+<item name="rated D" uri=":rating:d">
+<term string="D" />
+</item>
+<item name="rated R" uri=":rating:r">
+<term string="R" />
+</item>
+</dictionary>
+
+<dictionary name="Instruments">
+<item name="ARS" uri=":instr:ARS">
+<term string="auction rate securities" />
+<term string="ARS" />
+</item>
+<item name="bank trust preferred" uri=":instr:bank-trust-preferred">
+<term string="bank trust preferred" />
+</item>
+<item name="bonds" uri=":instr:bonds">
+<term string="bonds" />
+</item>
+<item name="cash" uri=":instr:cash">
+<term string="cash" />
+</item>
+<item name="cash equivalent securities" uri=":instr:cash-equiv">
+<term string="cash equivalent securities" />
+</item>
+<item name="cash pay notes" uri=":instr:cpn">
+<term string="cash pay notes" />
+</item>
+<item name="certificate of deposit" uri=":instr:certificate-deposit">
+<term string="certificate of deposit" />
+<term string="cd" />
+</item>
+<item name="collateralized debt obligations" uri=":instr:collateralized-debt-obligations">
+<term string="collateralized debt obligations" />
+</item>
+<item name="commercial mortgage" uri=":instr:commercial-mortgage">
+<term string="commercial mortgage" />
+</item>
+<item name="common stock" uri=":instr:common-stock">
+<term string="common stock" />
+</item>
+<item name="commodities" uri=":instr:commodities">
+<term string="commodities" />
+</item>
+<item name="convertible bonds" uri=":instr:convertible-bonds">
+<term string="convertible bonds" />
+</item>
+<item name="convertible preferred" uri=":instr:convertible-preferred">
+<term string="convertible preferred" />
+</item>
+<item name="credit default swaps" uri=":instr:swaps">
+<term string="credit defaultswaps" />
+<term string="CDS" />
+</item>
+<item name="defaulted" uri=":instr:defaulted">
+<term string="defaulted" />
+</item>
+<item name="deferred pay securities" uri=":instr:dp-securities">
+<term string="deferred pay securities" />
+</item>
+<item name="derivatives" uri=":instr:derivatives">
+<term string="derivatives" />
+<term string="derivative instrument" />
+<term string="derivative instruments" />
+</item>
+<item name="direct real estate" uri=":instr:direct-real-estate">
+<term string="direct real estate" />
+</item>
+<item name="equities" uri=":isntr:equities">
+<term string="equities" />
+</item>
+<item name="futures" uri=":instr:futures">
+<term string="futures" />
+</item>
+<item name="high yield" uri=":instr:high-yield">
+<term string="high yield" />
+</item>
+<item name="manager guidelines" uri=":logic:manager-guidelines">
+<term string="manager guidelines" />
+</item>
+<item name="mortgage derivatives" uri=":instr:mortgate-derivatives">
+<term string="mortgage derivatives" />
+</item>
+<item name="new issue securities" uri=":instr:new-issue-securities">
+<term string="new issue securities" />
+</item>
+<item name="options" uri=":instr:options">
+<term string="options" />
+</item>
+<item name="PIK bonds" uri=":instr:PIK-bonds">
+<term string="payment in kind" />
+<term string="PIK" />
+<term string="PIK bonds" />
+</item>
+<item name="preferred shares" uri=":instr:preferred-shares">
+<term string="preferred shares" />
+<term string="preferred" />
+</item>
+<item name="Repos" uri=":instr:repos">
+<term string="repos" />
+<term string="repurchase agreements" />
+</item>
+<item name="Reverse Repo" uri=":instr:reverse-repo">
+<term string="reverse repurchase agreements" />
+<term string="Reverse Repos" />
+</item>
+<item name="Rule 144A" uri=":instr:Rule-144A">
+<term string="Rule-144A" />
+</item>
+<item name="securities" uri=":instr:securities">
+<term string="securities" />
+</item>
+<item name="securities with registration rights" uri=":instr:securities-registration-rights">
+<term string="securites with registration rights" />
+</item>
+<item name="shares" uri=":instr:shares">
+<term string="shares" />
+</item>
+<item name="stocks" uri=":instr:stocks">
+<term string="stocks" />
+<term string="stock" />
+</item>
+<item name="swaps" uri=":instr:swaps">
+<term string="swaps" />
+</item>
+<item name="swaptions" uri=":instr:swaptions">
+<term string="swaptions" />
+</item>
+<item name="VRDNs" uri=":instr:vrdns">
+<term string="variable rate demand notes" />
+<term string="VRDNs" />
+</item>
+</dictionary>
+
+<dictionary name="Industries">
+<item name="industry group" uri=":org:industry-group">
+<term string="industry group" />
+<term string="industry subgroup" />
+</item>
+<item name="insurer" uri=":org:insurer">
+<term string="insurance" />
+<term string="insurer" />
+<term string="life" />
+<term string="health" />
+<term string="healthy" />
+<term string="property and casualty" />
+</item>
+<item name="alcohol" uri=":org:alcohol">
+<term string="alcohol" />
+<term string="Brewery" />
+<term string="wine" />
+<term string="spirits" />
+</item>
+<item name="borrower" uri=":org:borrower">
+<term string="borrower" />
+<term string="borrowers" />
+</item>
+<item name="reinsurer" uri=":org:reinsurer">
+<term string="reinsurer" />
+<term string="reinsurers" />
+</item>
+<item name="tobacco companies" uri=":org:tobacco">
+<term string="tobacco companies" />
+<term string="tobacco" />
+</item>
+</dictionary>
+
+<dictionary name="Organizations">
+<item name="company" uri=":org:company">
+<term string="company" />
+<term string="companies" />
+</item>
+<item name="client" uri=":org:client">
+<term string="client" />
+</item>
+<item name="issue" uri=":org:issue">
+<term string="issue" />
+</item>
+<item name="issuers" uri=":org:issuers">
+<term string="issuers" />
+</item>
+<item name="manager" uri=":org:manager">
+<term string="manager" />
+<term string="investment manager" />
+</item>
+<item name="party" uri=":org:party">
+<term string="party" />
+</item>
+<item name="public" uri=":org:public">
+<term string="public" />
+</item>
+<item name="rating agency" uri=":org:rating">
+<term string="Moody" />
+<term string="Standard and Poor" />
+<term string="Standard and Poor's" />
+<term string="Standard &amp; Poor" />
+<term string="Standard &amp; Poor's" />
+</item>
+<item name="restricted issuers" uri=":org:restricted-issuers">
+<term string="restricted issuers" />
+</item>
+<item name="US government" uri=":org:usgov">
+<term string="US government" />
+</item>
+</dictionary>
+
+<dictionary name="Account types">
+<item name="mid cap equity portfolio" uri=":acct:mid-cap-equity-portfolio">
+<term string="mid cap equity portfolio" />
+</item>
+<item name="money market account" uri=":acct:money-market">
+<term string="money-market account" />
+<term string="money market account" />
+</item>
+<item name="money market sweep account" uri=":acct:money-market-sweep">
+<term string="money-market sweep account" />
+<term string="money market sweep account" />
+</item>
+</dictionary>
+
+<dictionary name="Trading">
+<item name="ATOP" uri=":trading:atop">
+<term string="ATOP" />
+<term string="at the time of purchase" />
+</item>
+<item name="buy" uri=":trading:buy">
+<term string="buy" />
+<term string="buying" />
+</item>
+<item name="downgrade" uri=":trading:downgrade">
+<term string="downgrade" />
+</item>
+<item name="held" uri=":trading:held">
+<term string="held	" />
+</item>
+<item name="liquidated" uri=":trading:liquidated">
+<term string="liquidated" />
+</item>
+<item name="long position" uri=":trading:long-position">
+<term string="long position" />
+</item>
+<item name="on margin" uri=":trading:on-margin">
+<term string="on margin" />
+</item>
+<item name="maturity" uri=":trading:maturity">
+<term string="maturity" />
+</item>
+<item name="sell" uri=":trading:sell">
+<term string="sell" />
+<term string="selling" />
+</item>
+<item name="short position" uri=":trading:short-position">
+<term string="short position" />
+</item>
+<item name="short sale" uri=":trading:short-sale">
+<term string="short sale" />
+</item>
+</dictionary>
+
+<dictionary name="Measure">
+<item name="market value" uri=":measure:mv">
+<term string="market value" />
+<term string="current market value" />
+</item>
+<item name="account market value" uri=":measure:mv-acc">
+<term string="market value of account" />
+</item>
+<item name="US Dollars" uri=":measure:USD">
+<term string="US Dollars" />
+<term string="USD Currency" />
+</item>
+<item name="quality" uri=":measure:quality">
+<term string="quality" />
+</item>
+<item name="one year" uri=":measure:one-year">
+<term string="1 year" />
+<term string="one year" />
+</item>
+<item name="outstanding shares" uri=":measure:outstanding-shares">
+<term string="outstanding shares" />
+</item>
+</dictionary>
+</matching>
+
+</domain>
+]]></Data>
+</XData>
+</Class>
+</Export>

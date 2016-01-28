@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Export generator="Cache" version="25">
+<Class name="Demo.RulesBuilder.RuleDefinitionElement">
+<Super>%SerialObject</Super>
+<TimeCreated>63832,72391.546204</TimeCreated>
+
+<Property name="Type">
+<Type>%String</Type>
+<Parameter name="VALUELIST" value=",dictionary,item"/>
+</Property>
+
+<Property name="Name">
+<Type>%String</Type>
+</Property>
+
+<Property name="Count">
+<Description>
+0 = optional
+1 = mandatory
+2 = one or more</Description>
+<Type>%Integer</Type>
+<InitialExpression>1</InitialExpression>
+</Property>
+
+<Property name="Negation">
+<Type>%String</Type>
+<InitialExpression>"N/A"</InitialExpression>
+<Parameter name="VALUELIST" value=",N/A,rule,affirmative,negative"/>
+</Property>
+
+<Storage name="Default">
+<Type>%Library.CacheSerialState</Type>
+<State>RuleDefinitionElementState</State>
+<StreamLocation>^Demo.RulesB860.RuleDefinitAE14S</StreamLocation>
+<Data name="RuleDefinitionElementState">
+<Value name="1">
+<Value>Type</Value>
+</Value>
+<Value name="2">
+<Value>Name</Value>
+</Value>
+<Value name="3">
+<Value>Count</Value>
+</Value>
+<Value name="4">
+<Value>Negation</Value>
+</Value>
+</Data>
+</Storage>
+</Class>
+</Export>

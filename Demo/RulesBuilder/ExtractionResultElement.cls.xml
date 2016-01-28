@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Export generator="Cache" version="25">
+<Class name="Demo.RulesBuilder.ExtractionResultElement">
+<Super>%SerialObject</Super>
+<TimeCreated>63833,38965.289391</TimeCreated>
+
+<Property name="RuleElementSeq">
+<Type>%Integer</Type>
+</Property>
+
+<Property name="RuleElement">
+<Type>RuleDefinitionElement</Type>
+</Property>
+
+<Property name="MatchScore">
+<Type>%Numeric</Type>
+</Property>
+
+<Property name="DictionaryTermId">
+<Type>%Integer</Type>
+</Property>
+
+<Property name="Literal">
+<Type>%String</Type>
+<Parameter name="MAXLEN" value="1000"/>
+</Property>
+
+<Property name="EntOccOutput">
+<Type>%String</Type>
+<Collection>array</Collection>
+<Parameter name="MAXLEN" value="200"/>
+</Property>
+
+<Property name="Negation">
+<Type>%Boolean</Type>
+</Property>
+
+<Property name="Color">
+<Type>%String</Type>
+</Property>
+
+<Property name="FirstEntOccId">
+<Type>%Integer</Type>
+</Property>
+
+<Property name="IsSecondary">
+<Type>%Boolean</Type>
+</Property>
+
+<Storage name="Default">
+<Type>%Library.CacheSerialState</Type>
+<State>ExtractionResultElementState</State>
+<StreamLocation>^Demo.RulesB860.ExtractionR5ACBS</StreamLocation>
+<Data name="ExtractionResultElementState">
+<Value name="1">
+<Value>RuleElementSeq</Value>
+</Value>
+<Value name="2">
+<Value>RuleElement</Value>
+</Value>
+<Value name="3">
+<Value>MatchScore</Value>
+</Value>
+<Value name="4">
+<Value>EntOccOutput</Value>
+</Value>
+<Value name="5">
+<Value>Literal</Value>
+</Value>
+<Value name="6">
+<Value>DictionaryTermId</Value>
+</Value>
+<Value name="7">
+<Value>Negation</Value>
+</Value>
+<Value name="8">
+<Value>Color</Value>
+</Value>
+<Value name="9">
+<Value>FirstEntOccId</Value>
+</Value>
+<Value name="10">
+<Value>IsSecondary</Value>
+</Value>
+</Data>
+</Storage>
+</Class>
+</Export>

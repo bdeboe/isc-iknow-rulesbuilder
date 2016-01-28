@@ -1,0 +1,121 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Export generator="Cache" version="25">
+<Class name="Demo.RulesBuilder.ExtractionResult">
+<Super>%Persistent</Super>
+<TimeCreated>63832,74316.868076</TimeCreated>
+
+<Property name="DomainId">
+<Type>%Integer</Type>
+</Property>
+
+<Property name="DocumentName">
+<Type>%String</Type>
+<Parameter name="MAXLEN" value="250"/>
+</Property>
+
+<Property name="SourceId">
+<Type>%Integer</Type>
+</Property>
+
+<Property name="RuleDefinition">
+<Type>RuleDefinition</Type>
+</Property>
+
+<Property name="Score">
+<Type>%Numeric</Type>
+<InitialExpression>0</InitialExpression>
+</Property>
+
+<Property name="HighlightingResult">
+<Type>%String</Type>
+<Parameter name="MAXLEN"/>
+</Property>
+
+<Property name="MatchedElements">
+<Type>ExtractionResultElement</Type>
+<Collection>list</Collection>
+<Parameter name="STORAGEDEFAULT" value="array"/>
+</Property>
+
+<Property name="MeetsMandatory">
+<Type>%Boolean</Type>
+</Property>
+
+<Property name="MeetsOrder">
+<Type>%Boolean</Type>
+</Property>
+
+<Property name="Paragraph">
+<Type>Paragraph</Type>
+</Property>
+
+<Property name="SentenceId">
+<Type>%Integer</Type>
+</Property>
+
+<ForeignKey name="RuleDefinition">
+<OnDelete>cascade</OnDelete>
+<Properties>RuleDefinition</Properties>
+<ReferencedClass>Demo.RulesBuilder.RuleDefinition</ReferencedClass>
+</ForeignKey>
+
+<ForeignKey name="ParagraphFK">
+<OnDelete>cascade</OnDelete>
+<Properties>Paragraph</Properties>
+<ReferencedClass>Paragraph</ReferencedClass>
+</ForeignKey>
+
+<Index name="DomSrcIdx">
+<Properties>DomainId,DocumentName</Properties>
+</Index>
+
+<Storage name="Default">
+<Type>%Library.CacheStorage</Type>
+<DataLocation>^Demo.RulesB860.ExtractionR40E5D</DataLocation>
+<DefaultData>ExtractionResultDefaultData</DefaultData>
+<IdLocation>^Demo.RulesB860.ExtractionR40E5D</IdLocation>
+<IndexLocation>^Demo.RulesB860.ExtractionR40E5I</IndexLocation>
+<StreamLocation>^Demo.RulesB860.ExtractionR40E5S</StreamLocation>
+<Data name="ExtractionResultDefaultData">
+<Value name="1">
+<Value>%%CLASSNAME</Value>
+</Value>
+<Value name="2">
+<Value>SourceId</Value>
+</Value>
+<Value name="3">
+<Value>RuleDefinition</Value>
+</Value>
+<Value name="4">
+<Value>Score</Value>
+</Value>
+<Value name="5">
+<Value>HighlightingResult</Value>
+</Value>
+<Value name="6">
+<Value>MeetsMandatory</Value>
+</Value>
+<Value name="7">
+<Value>MeetsOrder</Value>
+</Value>
+<Value name="8">
+<Value>DomainId</Value>
+</Value>
+<Value name="9">
+<Value>DocumentName</Value>
+</Value>
+<Value name="10">
+<Value>Paragraph</Value>
+</Value>
+<Value name="11">
+<Value>SentenceId</Value>
+</Value>
+</Data>
+<Data name="MatchedElements">
+<Attribute>MatchedElements</Attribute>
+<Structure>subnode</Structure>
+<Subscript>"MatchedElements"</Subscript>
+</Data>
+</Storage>
+</Class>
+</Export>

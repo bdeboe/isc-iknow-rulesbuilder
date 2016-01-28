@@ -1,0 +1,636 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Export generator="Cache" version="25">
+<CSP name="RulesBuilderDemo.js" application="/csp/rulesbuilder/" default="1"><![CDATA[
+
+var rulesApp = angular.module('rulesApp', ['ngResource', 'ngSanitize'])
+.directive('convertToNumber', function() {
+  return {
+    require: 'ngModel',
+    link: function(scope, element, attrs, ngModel) {
+      ngModel.$parsers.push(function(val) {
+        return parseInt(val, 10);
+      });
+      ngModel.$formatters.push(function(val) {
+        return '' + val;
+      });
+    }
+  }
+});
+
+rulesApp.controller('DomainController', ['$scope', 'restFeatures', function($scope, restFeatures) {
+
+	// initialize ikDomain
+	function initDomain() {
+	var domain = location.search.substr(1).split('#')[0];
+	if (!isNaN(parseInt(domain))) return parseInt(domain);
+	var regexp = /^([0-9]+)/;
+	var parsed = regexp.exec(domain);
+	if (parsed && (parsed.length>0) && !isNaN(parseInt(parsed[0]))) return parsed[0];
+		alert('No domain specified in URL!'); 
+		return 0;
+	}
+	$scope.ikDomain = initDomain();
+	 
+	// retrieve capabilities
+   	function getFeatures() {
+       tempFeatures = restFeatures.query({domain:$scope.ikDomain},function(data) {
+	     $scope.Features = tempFeatures;
+	     delete tempFeatures;
+       });
+   	}
+   	getFeatures();
+}]);
+	 
+hostURL = function() {
+	return location.href.split('/').slice(0,-1).join('/')+'/rbREST/Domain/:domain/';
+};
+
+$('#myTabs a').click(function (e) {
+	e.preventDefault();
+	$(this).tab('show')
+})
+   
+function showModalError(title, part1, part2, part3) {
+	alert(title+'\n\n'+part1);
+	/*
+	$('#errorModal').find('.modal-title').text(title);
+	$('#errorModal').find('.modal-body-part1').text(part1);
+	$('#errorModal').find('.modal-body-part2').text(part2);
+	$('#errorModal').find('.modal-body-part3').text(part3);
+	$('#errorModal').modal({"backdrop":"static"});
+	*/
+};
+ 
+function resourceErrorHandler(response) {
+	showModalError('Error',
+					'Status returned : ' + response.status + ' (' + response.statusText + ')',
+					'REST call       : ' + response.config.url,
+					'Data            : ' + response.data);
+	console.log(response.data);
+};
+ 
+function resourceSuccessHandler(response) {
+	if (typeof response.data.ErrorMessage != 'undefined') {
+		showModalError('Error',
+						'Status returned : ' + response.data.ErrorMessage,
+						'REST call       : ' + response.config.url,
+						'');
+		console.log(response.data);
+	}
+};
+
+function transformResponseHandler(data, header) {
+	try {
+		var jsonObject = JSON.parse(data);
+		return jsonObject;
+	} catch (e) {
+		if (typeof header.ErrorMessage != 'undefined') {
+			showModalError('Error',
+							'Status returned : ' + header.ErrorMessage,
+							'Received data in console.log (Ctrl Shift J in Chrome)', '');
+		} else {
+			showModalError('Error',
+							'Malformed JSON structure : ' + e,
+							'Received data in console.log (Ctrl Shift J in Chrome)',	'');
+		}
+		console.log(data);
+	}
+	return {};
+};
+
+
+rulesApp.factory('restFeatures', function ($resource) {
+	return $resource(hostURL() + "Features", {}, {
+		query: { method: "GET", isArray: false,
+					interceptor : {
+						response : resourceSuccessHandler,
+						responseError : resourceErrorHandler
+					},
+					transformResponse : transformResponseHandler
+		}
+	});
+});
+
+
+
+rulesApp.factory('restEntities', function ($resource) {
+	return $resource(hostURL() + "Entities/:entity?SourceFilter=:sourceFilter", {}, {
+		query: { method: "GET", isArray: false,
+					interceptor : {
+						response : resourceSuccessHandler,
+						responseError : resourceErrorHandler
+					},
+					transformResponse : transformResponseHandler
+		}
+	});
+}); //app.factory 'restSimilar'
+
+rulesApp.factory('restSentencesByEntity', function ($resource) {
+	return $resource(hostURL() + "Sentences/Entity/:entity", {}, {
+		query: { method: "GET", isArray: false,
+					interceptor : {
+						response : resourceSuccessHandler,
+						responseError : resourceErrorHandler
+					},
+					transformResponse : transformResponseHandler
+		}
+	});
+});
+
+rulesApp.factory('restDictionaries', function ($resource) {
+	return $resource(hostURL() + "Dictionaries", {}, {
+		query: { method: "GET", isArray: false,
+					interceptor : {
+						response : resourceSuccessHandler,
+						responseError : resourceErrorHandler
+					},
+					transformResponse : transformResponseHandler
+		},
+		update: { method: "POST", isArray: false,
+					interceptor : {
+						response : resourceSuccessHandler,
+						responseError : resourceErrorHandler
+					}
+		}
+	});
+});
+
+rulesApp.factory('restRuleDefs', function ($resource) {
+	return $resource(hostURL() + "RuleDefinitions", {}, {
+		query: { method: "GET", isArray: false,
+					interceptor : {
+						response : resourceSuccessHandler,
+						responseError : resourceErrorHandler
+					},
+					transformResponse : transformResponseHandler
+		},
+		update: { method: "POST", isArray: false,
+					interceptor : {
+						response : resourceSuccessHandler,
+						responseError : resourceErrorHandler
+					}
+		}
+	});
+});
+
+
+rulesApp.factory('restExtract', function ($resource) {
+	return $resource(hostURL() + "Extract/:ParID/:SourceID", {}, {
+		query : {method: 'GET', isArray: false,
+					interceptor : {
+						response : resourceSuccessHandler,
+						responseError : resourceErrorHandler
+					}
+		}
+	});
+});
+
+
+rulesApp.factory('restIndex', function ($resource) {
+	return $resource(hostURL() + "Index", {}, {
+		update : {method: 'POST',
+					interceptor : {
+						response : resourceSuccessHandler,
+						responseError : resourceErrorHandler
+					}
+		}
+	});
+});
+
+
+rulesApp.factory('restParse', function ($resource) {
+	return $resource(hostURL() + "Parse", {}, {
+		update : {method: 'POST',
+					interceptor : {
+						response : resourceSuccessHandler,
+						responseError : resourceErrorHandler
+					}
+		}
+	});
+});
+
+
+rulesApp.controller('ConceptsController', ['$scope', '$filter', '$resource', '$sce', 'restEntities', 'restSentencesByEntity', 'restRuleDefs', 'restExtract', 'restDictionaries', 'restParse', 'restIndex', function($scope, $filter, $resource, $sce, restEntities, restSentencesByEntity, restRuleDefs, restExtract, restDictionaries, restParse, restIndex) {
+	
+	
+	$scope.autocomplete = function() {
+		if (($scope.discoString != '') && ($scope.discoString.length >= $scope.Features.MinSearchLength)) {
+			$scope.getEntities($scope.discoString);
+		}
+	};
+
+	$scope.getEntities = function (string) {
+		var temp = restEntities.query({domain:$scope.ikDomain, entity:string}, function(data) {
+			$scope.entities = temp.Entities;
+			delete temp;
+		});
+	};
+	
+	$scope.selectEntity = function (entity) {
+		var temp = restSentencesByEntity.query({domain:$scope.ikDomain, entity:entity.EntityValue}, function(data) {
+			$scope.sentences = temp.Sentences;
+			delete temp;
+		});
+	}
+	
+	$scope.getRuleDefs = function (string) {
+		var temp = restRuleDefs.query({domain:$scope.ikDomain}, function(data) {
+			$scope.ruleDefs = temp.RuleDefinitions;
+			delete temp;
+		});
+	}
+	
+	$scope.editRuleDef = function (ruleDef) {
+		$scope.currentRuleDef = ruleDef;
+		$('#ruleDetails').modal('show');
+	}
+	$scope.dropRuleDef = function(rule) {
+		if (!confirm('Are you sure you want to delete rule "'+rule.Name+'"?')) return;
+		var temp = restRuleDefs.update({domain:$scope.ikDomain}, {'delete':true, 'obj':{'ID':rule.ID} }, function(data) {
+			$scope.getRuleDefs();
+		});
+	}
+	$scope.createRuleDef = function() {
+		$scope.currentRuleDef = { 'ID':0, 'Name':'New rule', 'Elements':[] };
+		$('#ruleDetails').modal('show');
+	}
+	$scope.updateRuleDef = function() {
+		//console.log($scope.currentRuleDef);
+		var temp = restRuleDefs.update({domain:$scope.ikDomain}, {'update':true, 'obj':$scope.currentRuleDef }, function(data) {
+			$scope.getRuleDefs();
+			$('#ruleDetails').modal('hide');
+		});
+	}
+	$scope.addRuleElem = function() {
+		var elem = { 'Count': 0, 'Negation': 'N/A', 'Type':'dictionary', 'ItemURI':'ANY' };
+		if ($scope.currentDict.name) {
+			elem.DictName = $scope.currentDict.name;
+		} else if ($scope.dictionaries && ($scope.dictionaries.length>0)) {
+			elem.DictName = $scope.dictionaries[0].name;
+		}
+		$scope.currentRuleDef.Elements.push(elem);
+	}
+	$scope.dropRuleElem = function(index) {
+		var arr = $scope.currentRuleDef.Elements.slice(0,index);
+		$scope.currentRuleDef.Elements = arr.concat($scope.currentRuleDef.Elements.slice(index+1));
+	}
+	
+	$scope.selectExtract = function (extract) {
+		$scope.currentRuleExtract = extract;
+		$scope.currentRuleExtractHTML = $sce.trustAsHtml(extract.HighlightingResult);
+	}
+	
+	$scope.index = function () {
+		$scope.paragraphs = [];
+		$scope.currentRuleExtract = null;
+		$scope.currentRuleExtractHTML = '';
+		var obj = $scope.parsedText;
+		//obj.formatted = null;
+		obj.documentName = $scope.docName;
+		var temp = restIndex.update({domain:$scope.ikDomain}, {'doc':obj}, function(data) {
+			$scope.paragraphs = temp.paragraphs;
+			for (var i = 0; i < $scope.paragraphs.length; i++) {
+				$scope.paragraphs[i].done = false;
+				$scope.paragraphs[i].fullText = $sce.trustAsHtml(temp.paragraphs[i].fullText);
+				$scope.paragraphs[i].hasMatches = ($scope.paragraphs[i].matchCount > 0);
+				$scope.extract($scope.paragraphs[i]);
+			}
+			console.log($scope.paragraphs);
+			delete temp;
+			$('#tabi4h').parent().removeClass('disabled');
+			$('#tabi5h').parent().removeClass('disabled');
+		    $('#tabi4h').click();
+		});
+	}
+	
+	$scope.extract = function(par) {
+		var temp = restExtract.query({domain:$scope.ikDomain, ParID:par.paragraphId, SourceID:par.sourceId}, function(data) {
+			console.log(temp);
+			par.rules = temp.ExtractionResults;
+			par.hasRules = (par.rules.length > 0);
+			if (par.hasRules) { 
+				par.fullText = $sce.trustAsHtml(par.rules[0].HighlightingResult);
+			}
+			$('.ruleDefDetail').popover();
+			delete temp;
+		});
+	}
+	
+	$scope.parse = function (text) {
+		$scope.parsedText = null;
+		$scope.paragraphs = [];
+		$scope.matchedParagraphs = null;
+		var temp = restParse.update({domain:$scope.ikDomain}, {'Text':text}, function(data) {
+			$scope.parsedText = temp;
+			$scope.parsedText.formatted = $scope.generateHTMLForChildren(temp);
+			delete temp;
+			$('#tabi3h').parent().removeClass('disabled');
+		    $('#tabi3h').click();
+		});
+	}
+	$scope.generateHTMLForChildren = function(doc) {
+		if (!doc.children) return '';
+		var html = '<table class="formatted-doc">';
+		for (var i = 0; i < doc.children.length; i++) {
+			html += '<tr><td rowspan="2">'+doc.children[i].key+'</td><td>'+doc.children[i].text+'</td></tr>';
+			html += '<tr><td>'+$scope.generateHTMLForChildren(doc.children[i])+'</td></tr>';
+		}
+		html += '</table>';
+		return html;
+	}
+	
+	$scope.getExtractionResults = function() {
+		temp = restRuleExtracts.query({domain:$scope.ikDomain, SessionId:0}, function(data) {
+			$scope.extractedRules = temp.ExtractionResults;
+			delete temp;
+		});
+	}
+	
+	$scope.getDictionaries = function(init) {
+		temp = restDictionaries.query({domain:$scope.ikDomain}, function(data) {
+			$scope.dictionaries = temp.dictionaries;
+			delete temp;
+			
+			if (init) {
+				$scope.currentDict = { 'items': $scope.allDictItems()};
+				$scope.currentDictItem = { 'terms' : $scope.allDictTerms()};
+			} else {
+			if ($scope.currentDict.id) {
+					for (d in $scope.dictionaries) {
+						if ($scope.dictionaries[d].id == $scope.currentDict.id) {
+							$scope.currentDict = $scope.dictionaries[d];
+						}
+					}
+				}
+				if ($scope.currentDictItem.id) {
+					for (d in $scope.dictionaries) {
+						for (i in $scope.dictionaries[d].items) {
+							if ($scope.currentDictItem.id == $scope.dictionaries[d].items[i].id) {
+								$scope.currentDictItem = $scope.dictionaries[d].items[i];
+							}
+						}
+					}
+				}
+			}
+		});
+	}
+	$scope.selectDict = function(dict) {
+		if ($scope.currentDict.id == dict.id) {
+			$scope.currentDict = { 'items': $scope.allDictItems() };
+			$scope.currentDictItem = { 'terms' : $scope.allDictTerms() };
+		} else {
+			$scope.currentDict = dict;
+			$scope.currentDictItem = { 'terms' : [] };
+		}
+	}
+	$scope.selectDictItem = function(item) {
+		if ($scope.currentDictItem.id == item.id) {
+			$scope.currentDictItem = { 'terms': $scope.allDictTerms()};
+		} else {
+			$scope.currentDictItem = item;
+		}
+	}
+	$scope.getDictItems = function(dname)  {
+		for (d in $scope.dictionaries) {
+			if (dname == $scope.dictionaries[d].name) {
+				return $scope.dictionaries[d].items;
+			}
+		}
+	}
+	$scope.allDictItems = function() {
+		var items = [];
+		for (d in $scope.dictionaries) {
+			items = items.concat($scope.dictionaries[d].items);
+		}
+		return items;
+	}
+	$scope.allDictTerms = function() {
+		var terms = [];
+		for (d in $scope.dictionaries) {
+			for (i in $scope.dictionaries[d].items) {
+				terms = terms.concat($scope.dictionaries[d].items[i].terms);
+			}
+		}
+		return terms;
+	}
+	$scope.dropDict = function(dict) {
+		for (r in $scope.ruleDefs) {
+			for (e in $scope.ruleDefs[r].Elements) {
+				var el = $scope.ruleDefs[r].Elements[e];
+				if (el.DictName == dict.name) {
+					alert('This dictionary is in use by rule "'+$scope.ruleDefs[r].Name+'" and cannot be deleted');
+					return;
+				}
+			}
+		}
+		if (confirm('Do you really want to remove dictionary "'+dict.name+'"?')) {
+			var temp = restDictionaries.update({domain:$scope.ikDomain}, {'delete': true, 'type': 'dict', 'id': dict.id}, function(data) {
+				$scope.getDictionaries();
+			});
+		}
+	}
+	$scope.dropDictItem = function(item) {
+		for (r in $scope.ruleDefs) {
+			for (e in $scope.ruleDefs[r].Elements) {
+				var el = $scope.ruleDefs[r].Elements[e];
+				if (el.ItemURI == item.uri) {
+					alert('This item is in use by rule "'+$scope.ruleDefs[r].Name+'" and cannot be deleted');
+					return;
+				}
+			}
+		}
+		if (confirm('Do you really want to remove item "'+item.name+'"?')) {
+			var temp = restDictionaries.update({domain:$scope.ikDomain}, {'delete': true, 'type': 'item', 'id': item.id}, function(data) {
+				$scope.getDictionaries();
+			});
+		}
+	}
+	$scope.dropDictTerm = function(term) {
+		if (confirm('Do you really want to remove term "'+term.string+'"?')) {
+			var temp = restDictionaries.update({domain:$scope.ikDomain}, {'delete': true, 'type': 'term', 'id': term.id}, function(data) {
+				$scope.getDictionaries();
+			});
+		}
+	}
+	$scope.createDict = function(type) {
+		var obj = $scope.newDict[type];
+		obj.dictId = $scope.currentDict.id;
+		obj.itemId = $scope.currentDictItem.id;
+		obj.create = true;
+		obj.type = type;
+		var temp = restDictionaries.update({domain:$scope.ikDomain}, obj, function(data) {
+			$scope.getDictionaries();
+			$scope.newDict[type] = {};
+			$('#newDict-'+type).modal('hide');
+		});
+	}
+	$scope.tryItemURI = function() {
+		if (($scope.newDict['item'].uri == null) || ($scope.newDict['item'].uri == '')) {
+			$scope.newDict['item'].uri = ':'+$scope.currentDict.name+':'+$scope.newDict['item'].name;
+		}
+	}
+	
+	$scope.toggleValidExtractsOnly = function() {
+		$scope.validExtractsOnly = !$scope.validExtractsOnly;
+	}
+	
+	$scope.toggleParagraphHighlight = function(par, r) {
+		par.fullText = $sce.trustAsHtml(r.HighlightingResult);
+	}
+	
+	$scope.greaterThan = function(prop, val){
+	    return function(item){
+	      return item[prop] > val;
+	    }
+	}
+	
+	// initialize
+	$scope.docName = 'MyDoc'+Math.round(Math.random()*10000);
+	$scope.discoString = '';
+	$scope.getEntities();
+	
+	$scope.getDictionaries(true);
+	
+	$scope.getRuleDefs();
+	
+	$scope.elemOrder = '+FirstEntOccId';
+	$scope.validExtractsOnly = false;
+	
+	
+	
+	// file upload
+	$scope.uploadFile = function() {
+		var file = document.getElementById('file').files[0];
+      	var reader = new FileReader();
+      	$scope.docName = file.name;
+  		reader.onloadend = function(e){
+		    $scope.freeText = e.target.result;
+		    $scope.$apply();
+		}
+  		reader.readAsBinaryString(file);
+	};
+	
+	$scope.dropExtract = function(par, index) {
+		var arr = par.rules.slice(0,index);
+		par.rules = arr.concat(par.rules.slice(index+1));
+	}
+	$scope.resetExtract = function(extract) {
+		for (var i = 0; i < extract.MatchedElements.length; i++)
+			delete extract.MatchedElements[i].status;
+	}
+	
+	// new rule
+	$scope.newRule = {  };
+	$scope.createRule = function(par, rule) {
+		$scope.newRule = { 'paragraph': par, 'documentName': par.documentName };
+		if (rule != null) {
+			$scope.newRule.extract = rule;
+			$scope.newRule.paragraph.fullText = $sce.trustAsHtml(rule.HighlightingResult);
+			$scope.updateRuleString(rule);
+		}
+		$('#saveModal').modal('show');
+	}
+	
+	$scope.ruleStringMode = 'literal';
+	$scope.updateRuleString = function() {
+		if (($scope.newRule.rule != null) && ($scope.newRule.rule != '') && ($scope.newRule.rule != $scope.newRule.generatedRule)) {
+			if (!confirm('Do you want to overwrite the current rule?')) {
+				return;
+			}
+		}
+		
+		$scope.newRule.rule = '';
+		var arr = $filter('orderBy')($scope.newRule.extract.MatchedElements, $scope.elemOrder);
+		for (var i = 0; i < arr.length; i++) {
+			var elem = arr[i];
+			if (elem.status == 'skip') continue;
+			if (((elem.RuleElement.Negation=='rule') || (elem.RuleElement.Negation=='negative')) && elem.Negation) {
+				$scope.newRule.rule += 'NOT ';
+			}
+			$scope.newRule.rule += (($scope.ruleStringMode=='literal') ? elem.Literal : elem.DictionaryTerm.String) +' ';
+		}
+		// back up to enable warning for overwrite
+		$scope.newRule.generatedRule = $scope.newRule.rule;
+	}
+	
+	$scope.savedRules = [];
+	$scope.saveRule = function(dropParagraph) {
+		var index;
+		if ($scope.newRule.index) {
+			index = $scope.newRule.index;
+		} else {
+			index = $scope.savedRules.length;
+			$scope.newRule.index = index;
+		}
+		$scope.savedRules[index] = $scope.newRule;
+		$('#saveModal').modal('hide');
+		
+		if (dropParagraph) {
+			$scope.newRule.paragraph.done = true;
+			/*var index = -1;
+			for (var i = 0; i < $scope.paragraphs.length; i++) {
+				if ($scope.paragraphs[i].paragraphId == $scope.newRule.paragraph.paragraphId) {
+					index = i;
+					break;
+				}
+			}
+			if (index >= 0) {
+				var pre = $scope.paragraphs.slice(0,index);
+				$scope.paragraphs = pre.concat($scope.paragraphs.slice(index+1));
+			}*/
+		}
+		$scope.newRule = {  };
+	}
+	
+	$scope.editRule = function(r) {
+		$scope.newRule = r;
+		$('#saveModal').modal('show');
+	}
+	$scope.dropRule = function(index) {
+		var arr = $scope.savedRules.slice(0,index);
+		$scope.savedRules = arr.concat($scope.savedRules.slice(index+1));
+	}
+	
+	
+	// paragraph filtering
+	$scope.paragraphs = [];
+	$scope.parSelect = 'rule';
+	$scope.parFilter = { 'hasRules': true, 'done': false };
+	$scope.parSearch = '';
+	$scope.toggleParSelect = function(v) {
+		$scope.parSelect = v;
+		$scope.parFilter = { $:$scope.parFilter.$, 'done':false };
+		switch(v) {
+			case 'match':
+				$scope.parFilter.hasMatches = true;
+				break;
+			case 'rule':
+				$scope.parFilter.hasRules = true;
+				break;
+			default:
+				break;
+		}
+	}
+	
+	$scope.downloadRules = function() {
+		
+		var data = 'paragraph;rule;score';
+		for (var i in $scope.savedRules) {
+			var r = $scope.savedRules[i];
+			data += '\n'+r.paragraph.fullKey+';'+r.rule+';'+(r.extract ? r.extract.Score : '');
+		}
+		
+	    var uri = 'data:text/csv;charset=utf-8,' + escape(data);
+	    
+	    // generate a temp <a /> tag to ensure the downloading works well on all browsers
+	    var link = document.createElement("a");    
+	    link.href = uri;
+	    link.style = "visibility:hidden";
+	    link.download = "ExtractedRules.csv";
+	    document.body.appendChild(link);
+	    link.click();
+	    document.body.removeChild(link);
+	}
+	
+}]);]]></CSP>
+</Export>

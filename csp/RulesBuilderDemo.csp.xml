@@ -1,0 +1,572 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Export generator="Cache" version="25">
+<CSP name="RulesBuilderDemo.csp" application="/csp/rulesbuilder/" default="1"><![CDATA[
+<html ng-app="rulesApp">
+  <head>
+    <title>iKnow Rules Builder demo</title>
+    <link rel="stylesheet" type="text/css" href="nglib/bootstrap/css/bootstrap.min.css" />
+    <style type="text/css">
+    .tab-pane {
+	    padding-top:10px;
+    }
+    .panel-body-table {
+	    padding: 0px;
+    }
+    .panel-body-table .table {
+	    margin-bottom: 0px;
+    }
+
+	.panel.with-nav-tabs .panel-heading{
+	    padding: 5px 5px 0 5px;
+	}
+	.panel.with-nav-tabs .nav-tabs{
+		border-bottom: none;
+	}
+	.panel.with-nav-tabs .nav-justified{
+		margin-bottom: -1px;
+	}
+	
+	table.formatted-doc {
+	}
+	table.formatted-doc td {
+		min-width: 15px;
+		padding-right: 5px;
+		vertical-align: top;
+	}
+	table.formatted-doc td[rowspan="2"] {
+		color: #999;
+	}
+	
+	.match {
+		font-face: bold;
+		background: tomato;
+		border: 1px solid tomato;
+		padding-left: 2px;
+		padding-right: 2px;
+		border-radius: 4px;
+	}
+	
+	.glyphicon {
+		cursor: pointer;
+	}
+   </style>
+  </head>
+
+ <body style="padding: 15px">
+  <div class="container" ng-controller="DomainController as dc">
+     <ul class="nav nav-tabs" id="myTabs">
+       <li class=""><a href="#discovery" data-toggle="tab" aria-expanded="true">Discovery</a></li>
+       <li class=""><a href="#dictionaries" data-toggle="tab" aria-expanded="false">Dictionaries</a></li>
+       <li class=""><a href="#rules" data-toggle="tab" aria-expanded="false">Templates</a></li>
+       <li class="active"><a href="#extraction" data-toggle="tab" aria-expanded="false">Extraction</a></li>
+     </ul>
+     
+     
+     <div class="tab-content" ng-controller="ConceptsController as cc">
+     	
+     	<div class="tab-pane fade" id="discovery">
+     	  <div class="row" style="margin-bottom: 10px;">
+     	    <div class="col-md-12">
+	     	  <input type="text" ng-model="discoString" ng-change="autocomplete();" />
+   		  	  <button class="btn btn-primary" ng-click="getEntities(discoString);" >Go</button>
+   		  	</div>
+     	  </div>
+     	  <div class="row">
+     	    <div class="col-md-4">
+     	      <div class="panel panel-primary">
+     	        <div class="panel-heading">Entities</div>
+     	        <div class="panel-body panel-body-table" style="max-height: 600px;overflow-y: scroll;">
+                 <table class="table table-hover">
+                    <tr ng-repeat="concept in entities">  
+	                  <td ng-click="selectEntity(concept)">{{concept.EntityValue}}</td>
+	                  <td>{{concept.Frequency}}</td>
+	                </tr>
+	             </table>
+ 		       </div>
+     	      </div>
+     	    </div>
+     	    
+     	    <div class="col-md-8">
+     	      <div class="panel panel-primary">
+     	        <div class="panel-heading">Sentences</div>
+     	        <div class="panel-body panel-body-table" style="max-height: 600px;overflow-y: scroll;">
+                 <table class="table table-hover">
+                    <tr ng-repeat="s in sentences">  
+	                  <td>
+	                    <div ng-bind-html="s.Text"></div>
+	                  </td>
+	                </tr>
+	             </table>
+ 		       </div>
+     	      </div>
+     	    </div>
+     	  </div>
+     	</div>
+     	
+     	
+     	<div class="tab-pane fade" id="dictionaries">
+     	  <div class="row" style="margin-bottom: 10px;">
+     	      <div class="well">
+     	        <label>Filter &nbsp;</label><input type="text" ng-model="dictSearch" />
+     	      </div>
+     	      
+     	      <div class="row">
+     	      
+     	      <div id="newDict-dict" class="modal fade">
+			    <div class="modal-dialog">
+			      <div class="modal-content">
+			        <div class="modal-header">
+			          <span class="glyphicon glyphicon-remove close" data-dismiss="modal"> </span>
+			          <h4 class="modal-title">New dictionary</h4>
+		  	        </div>
+			        <div class="modal-body">
+			          <form>
+			            <div class="form-group">
+			              <label for="txtNewDictName">Dictionary</label>
+			              <input type="text" class="form-control" id="txtNewDictName" ng-model="newDict['dict'].name" />
+			            </div>
+			            <button class="btn btn-primary" ng-click="createDict('dict')" >Submit</button>
+			          </form>
+			        </div>
+			      </div>
+     	        </div>
+     	      </div>
+     	      
+     	      <div id="newDict-item" class="modal fade">
+			    <div class="modal-dialog">
+			      <div class="modal-content">
+			        <div class="modal-header">
+			          <span class="glyphicon glyphicon-remove close" data-dismiss="modal"> </span>
+			          <h4 class="modal-title">New dictionary item</h4>
+		  	        </div>
+			        <div class="modal-body">
+			          <form>
+			            <div class="form-group">
+			              <label for="txtNewDictIDict">Dictionary</label>
+			              <select class="form-control" id="txtNewDictIDict" ng-model="currentDict" 
+			                ng-options="d.name for d in dictionaries" ></select>
+			            </div>
+			            <div class="form-group">
+			              <label for="txtNewDictIName">Item name</label>
+			              <input type="text" class="form-control" id="txtNewDictIName" ng-model="newDict['item'].name"
+			              	ng-blur="tryItemURI()" />
+			            </div>
+			            <div class="form-group">
+			              <label for="txtNewDictIURI">Item URI</label>
+			              <input type="text" class="form-control" id="txtNewDictIURI" ng-model="newDict['item'].uri" />
+			            </div>
+			            <button class="btn btn-primary" ng-click="createDict('item')" >Submit</button>
+			          </form>
+			        </div>
+			      </div>
+     	        </div>
+     	      </div>
+     	      
+     	      
+     	      <div id="newDict-term" class="modal fade">
+			    <div class="modal-dialog">
+			      <div class="modal-content">
+			        <div class="modal-header">
+			          <span class="glyphicon glyphicon-remove close" data-dismiss="modal"> </span>
+			          <h4 class="modal-title">New dictionary term</h4>
+		  	        </div>
+			        <div class="modal-body">
+			          <form>
+			            <div class="form-group">
+			              <label for="txtNewDictTDict">Dictionary</label>
+			              <select class="form-control" id="txtNewDictTDict" ng-model="currentDict" 
+			                ng-options="d.name for d in dictionaries" ></select>
+			            </div>
+			            <div class="form-group">
+			              <label for="txtNewDictTItem">Dictionary</label>
+			              <select class="form-control" id="txtNewDictTItem" ng-model="currentDictItem" 
+			                ng-options="i.name for i in currentDict.items" ></select>
+			            </div>
+			            <div class="form-group">
+			              <label for="txtNewDictTString">Term string</label>
+			              <input type="text" class="form-control" id="txtNewDictTString" ng-model="newDict['term'].string" />
+			            </div>
+			            <button class="btn btn-primary" ng-click="createDict('term')" >Submit</button>
+			          </form>
+			        </div>
+			      </div>
+     	        </div>
+     	      </div>
+     	      
+     	      <div class="col-md-4">
+     	        <div class="panel panel-primary">
+     	          <div class="panel-heading">Dictionaries
+     	            <span class="glyphicon glyphicon-plus pull-right" onclick="$('#newDict-dict').modal('show');"></span>
+     	          </div>
+     	          <div class="panel-body panel-body-table" style="max-height: 600px;overflow-y: scroll;">
+                    <table class="table table-hover">
+                      <tr ng-repeat="d in dictionaries | filter:dictSearch" ng-class="{'success': d.id == currentDict.id}"> 
+                        <td ng-click="selectDict(d)">{{d.name}}</td> 
+                        <td class="text-right">
+                          <span class="glyphicon glyphicon-remove" title="drop dictionary"
+                          		ng-click="dropDict(d)"></span>
+                        </td>
+	                  </tr>
+	                </table>
+	              </div>
+ 		        </div>
+     	      </div>
+     	      
+     	      <div class="col-md-4">
+     	        <div class="panel panel-primary">
+     	          <div class="panel-heading">Items
+     	            <span class="glyphicon glyphicon-plus pull-right" onclick="$('#newDict-item').modal('show');"></span>
+     	          </div>
+     	          <div class="panel-body panel-body-table" style="max-height: 600px;overflow-y: scroll;">
+                    <table class="table table-hover">
+                      <tr ng-repeat="item in currentDict.items | filter:dictSearch | limitTo: 30" 
+                      	ng-click="selectDictItem(item)" ng-class="{'success': item.id == currentDictItem.id}"> 
+                        <td>{{item.name}}</td> 
+                        <td>{{item.uri}}</td>
+                        <td class="text-right">
+                          <span class="glyphicon glyphicon-remove" title="drop item"
+                          		ng-click="dropDictItem(item)"></span>
+                        </td>
+	                  </tr>
+	                </table>
+	              </div>
+ 		        </div>
+     	      </div>
+     	      
+     	      <div class="col-md-4">
+     	        <div class="panel panel-primary">
+     	          <div class="panel-heading">Terms
+     	            <span class="glyphicon glyphicon-plus pull-right" onclick="$('#newDict-term').modal('show');"></span>
+     	          </div>
+     	          <div class="panel-body panel-body-table" style="max-height: 600px;overflow-y: scroll;">
+                    <table class="table table-hover">
+                      <tr ng-repeat="term in currentDictItem.terms | filter:dictSearch | limitTo: 30"> 
+                        <td>{{term.string}}</td> 
+                        <td class="text-right">
+                          <span class="glyphicon glyphicon-remove" title="drop term"
+                          		ng-click="dropDictTerm(term)"></span>
+                        </td>
+	                  </tr>
+	                </table>
+	              </div>
+ 		        </div>
+     	      </div>
+     	      
+     	    </div>
+     	  </div>
+     	</div>
+     	
+     	<div class="tab-pane fade" id="rules">
+     	  <div class="row" style="margin-bottom: 10px;">
+     	      <div class="panel panel-primary">
+     	        <div class="panel-heading">Rule templates
+     	          <span class="glyphicon glyphicon-plus pull-right" ng-click="createRuleDef()"> </span>
+     	        </div>
+     	        <div class="panel-body panel-body-table" style="max-height: 600px;overflow-y: scroll;">
+                 <table class="table table-hover">
+                    <tr ng-repeat="rd in ruleDefs"> 
+                      <td>{{rd.Name}}</td> 
+	                  <td>
+	                    <div ng-bind-html="rd.StringRepresentation"></div>
+	                  </td>
+	                  <td class="text-right">
+	                    <span class="glyphicon glyphicon-pencil" ng-click="editRuleDef(rd)" style="margin-right:10px;"> </span>
+	                    <span class="glyphicon glyphicon-remove" ng-click="dropRuleDef(rd)"> </span>
+	                  </td>
+	                </tr>
+	             </table>
+ 		       </div>
+     	    </div>
+     	  </div>
+     	  
+     	  <div id="ruleDetails" class="modal fade">
+		    <div class="modal-dialog" style="width: 850px;">
+		      <div class="modal-content">
+		        <div class="modal-header">
+		          <span class="glyphicon glyphicon-remove close" data-dismiss="modal"> </span>
+		          <h4 class="modal-title">Template details</h4>
+	  	        </div>
+		        <div class="modal-body">
+     	  
+     	      <form class="form-vertical">
+                <div class="form-group">
+     	          <label for="ruleName" >Template name</label>
+     	          <input id="ruleName" class="form-control" ng-model="currentRuleDef.Name" />
+     	        </div>
+     	      </form>
+     	    
+     	      <table class="table table-hover table-condensed">
+     	        <tr>
+     	          <th>Dictionary</th>
+     	          <th>Item</th>
+     	          <th>Count</th>
+     	          <th>Negation</th>
+     	          <th class="text-right"><button class="btn btn-primary btn-xs" ng-click="addRuleElem()">add</button></th>
+     	        </tr>
+     	        <tr ng-repeat="elem in currentRuleDef.Elements">
+     	          <td>
+     	            <select ng-model="elem.DictName">
+     	              <option ng-repeat="d in dictionaries">{{d.name}}</option>
+     	            </select>
+     	          </td>
+     	          <td>
+     	            <select ng-model="elem.ItemURI">
+     	              <option value="ANY"  ng-attr-selected="(elem.Type=='dict')">[any item]</option>
+     	              <option ng-repeat="i in getDictItems(elem.DictName)" value="{{i.uri}}">{{i.name}}</option>
+     	            </select>
+     	          </td>
+     	          <td>
+     	            <select ng-model="elem.Count" convert-to-number>
+     	              <option value="0">optional</option>
+     	              <option value="1">mandatory</option>
+     	              <option value="2">multiple</option>
+     	            </select>
+     	          </td>
+     	          <td>
+     	            <select ng-model="elem.Negation">
+     	              <option>N/A</option>
+     	              <option>affirmative</option>
+     	              <option>negative</option>
+     	              <option>rule</option>
+     	            </select>
+     	          </td>
+     	          <td class="text-right">
+     	            <span class="glyphicon glyphicon-remove" ng-click="dropRuleElem($index)"> </span>
+     	          </td>
+     	        </tr>
+     	      </table>
+     	    </div>
+     	    
+     	        <div class="modal-footer">
+     	          <button class="btn btn-primary" ng-click="updateRuleDef()">Save</button>
+     	        </div>
+     	  
+     	      </div>
+     	    </div>
+     	  </div>
+     	</div>
+     	
+     	
+     	
+     	<div class="tab-pane fade active in" id="extraction">
+     	  <div class="row" style="margin-bottom: 10px;">
+     	  
+     	      <div class="panel with-nav-tabs panel-default">
+     	        <div class="panel-heading">
+     	          <ul class="nav nav-tabs">
+                    <!--li><a id="tabi1h" href="#tabi1" data-toggle="tab">File</a></li-->
+     	            <li class="active"><a id="tabi2h" href="#tabi2" data-toggle="tab">Text</a></li>
+                    <li class="disabled"><a id="tabi3h" href="#tabi3" data-toggle="tab">Formatted</a></li>
+                    <li class="disabled"><a id="tabi4h" href="#tabi4" data-toggle="tab">Extracted</a></li>
+                    <li class="disabled"><a id="tabi5h" href="#tabi5" data-toggle="tab">Saved rules</a></li>
+     	          </ul>
+    	        </div>
+     	        <div class="panel-body">
+     	          <div class="tab-content">
+     	          
+                    <!--div class="tab-pane fade" id="tabi1">
+     	              <input type="file" id="file" name="file" class="form-inline" />
+     	              <button class="btn form-inline"  ng-click="uploadFile()"
+     	              	ng-class="{'btn-primary': document.getElementById('file').files.length>0,
+     	              			   'btn-default': document.getElementById('file').files.length==0 }">Load</button>
+     	            </div-->
+     	            
+                    <div class="tab-pane fade in active" id="tabi2">
+                      <div class="row">
+                        <div class="col-md-8">
+                          <div class="form-group">
+                            <label for="txtDocName">Document name</label>
+                            <input class="form-control" label="Document name" ng-model="docName" />
+                          </div>
+                        </div>
+                        <div class="col-md-2">
+                          <div class="form-group">
+     	                    <label for="btnFile">Or load from file</label>
+     	                    <button id="btnFile" class="btn btn-info form-control" onclick="$('#file').click();">Choose file..</button>
+                            <input type="file" id="file" name="file" style="display:none;" 
+                            onchange="angular.element(this).scope().uploadFile()" />
+     	                  </div>
+                        </div>
+                        <div class="col-md-2">
+                          <div class="form-group">
+     	                    <label>&nbsp;</label>
+     	                    <button class="btn btn-success form-control" ng-click="parse(freeText);">Parse structure
+     	                      <span class="glyphicon glyphicon-chevron-right" aria-hidden="true"></span>
+     	                    </button>
+     	                  </div>
+                        </div>
+                      </div>
+                      <div class="row">
+                        <div class="col-md-12">
+     	                  <textarea rows="17" class="form-control" placeholder="Text input" 
+     	                	ng-model="freeText" style="margin-bottom:10px;" ></textarea>
+     	                </div>
+     	              </div>
+     	            </div>
+     	            
+                    <div class="tab-pane fade" id="tabi3">
+                      <div class="row">
+                        <div class="col-md-10">
+                          <h4 style="color: #999999;">Review paragraph splitting</h4>
+                        </div>
+                        <div class="col-md-2">
+   	                      <button class="btn btn-success form-control" ng-click="index()">Extract rules
+   	                        <span class="glyphicon glyphicon-chevron-right" aria-hidden="true"></span>
+   	                      </button>
+                        </div>
+                      </div>
+                      <div class="row">
+                        <div class="col-md-12">
+     	                  <div ng-bind-html="parsedText.formatted" > </div>
+     	                </div>
+     	              </div>
+     	            </div>
+     	            
+     	            <div class="tab-pane fade" id="tabi4">
+     	            
+     	              <table class="table">
+     	                <tr>
+     	                  <th>Matched paragraphs</th>
+     	                  <th align="right">
+     	                    <div class="btn-group btn-group-xs" role="group">
+     	                      <button type="button" class="btn" ng-class="{'btn-primary': parSelect=='all', 'btn-default': parSelect!='all'}" ng-click="toggleParSelect('all')" title="all paragraphs">all</button>
+     	                      <button type="button" class="btn" ng-class="{'btn-primary': parSelect=='match', 'btn-default': parSelect!='match'}" ng-click="toggleParSelect('match')" title="paragraphs with matches">matches</button>
+     	                      <button type="button" class="btn" ng-class="{'btn-primary': parSelect=='rule', 'btn-default': parSelect!='rule'}" ng-click="toggleParSelect('rule')" title="paragraphs with candidate rules">rules</button>
+     	                    </div>
+     	                  </th>
+     	                  <th>
+     	                    <div class="input-group input-group-sm">
+     	                      <input type="text" class="form-control" ng-model="parFilter.$" placeholder="filter"></input>
+     	                    </div>
+     	                  </th>
+     	                  <th>Extracted rules
+     	                    <div class="btn-group btn-group-xs" role="group">
+     	                      <button type="button" class="btn disabled">order: </button>
+     	                      <button type="button" class="btn" ng-class="{'btn-primary': elemOrder=='+FirstEntOccId', 'btn-default': elemOrder=='+RuleElementSeq'}" ng-click="elemOrder='+FirstEntOccId';" >original</button>
+     	                      <button type="button" class="btn" ng-class="{'btn-primary': elemOrder=='+RuleElementSeq', 'btn-default': elemOrder=='+FirstEntOccId'}" ng-click="elemOrder='+RuleElementSeq';" >rule</button>
+     	                    </div>
+     	                  </th>
+     	                </tr>
+              	        <tr ng-repeat="par in paragraphs | filter:parFilter | orderBy:['+startPos','+paragraphId']">
+              	          <td width="50%" colspan="3">
+              	            <div ng-bind-html="par.fullText"> </div>
+              	          </td>
+              	          <td width="50%">
+              	          
+              	            <table class="table table-hover">
+              	              <tr ng-repeat="r in par.rules" ng-mouseenter="toggleParagraphHighlight(par, r)">
+              	                <td>
+              	                  {{r.RuleDefinition.Name}}
+              	                  <a style="cursor: pointer;" rel="popover" class="ruleDefDetail" data-toggle="popover" title="Rule structure" data-content="{{r.RuleDefinition.StringRepresentation}}" >
+              	                    <span class="glyphicon glyphicon-plus"></span>
+              	                  </a>
+              	                </td>
+              	                <td>{{r.Score}}</td>
+              	                <td>
+              	                  <span ng-repeat="elem in r.MatchedElements | filter:{status:'!skip'} | orderBy:elemOrder">
+              	                    <button class="btn btn-sm btn-danger" ng-show="((elem.RuleElement.Negation=='rule') || (elem.RuleElement.Negation=='negative')) && elem.Negation" >NOT</button>
+     	                            <button class="btn btn-default" ng-click="elem.status='skip';"
+			     	        		   ng-style="{ 'border': '2px '+(elem.IsSecondary?'dashed':'solid')+' '+elem.Color, 'padding-left' : '2px', 'padding-right': '2px', 'color': elem.IsSecondary ? '#999999' : 'black'}"
+			     	        		   title="{{'\''+elem.Literal+'\' matched item \''+elem.DictionaryTerm.String+'\''}}">
+			     	                   {{elem.Value}}
+			     	                  <sup><span class="glyphicon glyphicon-remove"></span></sup>
+			     	                </button>&nbsp;
+			     	              </span>
+     	                        </td>
+     	                        <td>
+     	                          <div class="btn-group-vertical btn-group-xs" role="group" style="width: 55px;">
+        	                        <button ng-click="createRule(par,r)" class="btn btn-primary">Save</button>
+        	                        <button ng-click="resetExtract(r)" class="btn btn-default">Reset</button>
+        	                        <button ng-click="dropExtract(par,$index)" class="btn btn-default">Discard</button>
+        	                      </div>
+     	                        </td>
+              	              </tr>
+              	            </table>
+              	            
+              	            <div class="btn-group" role="group" style="display; flex;" ng-show="(par.rules == null) || (par.rules.length == 0)">
+	              	          <button ng-click="createRule(par, null)" class="btn btn-primary">Create rule</button>
+              	              <button ng-click="par.done = true;" class="btn btn-default">Skip paragraph</button>
+              	              <button ng-click="extract(par)" class="btn btn-default">Re-extract</button>
+              	            </div>
+              	          </td>
+              	        </tr>
+              	      </table>
+              	      
+              	      
+     	            </div>
+     	            
+     	            
+     	            <div class="tab-pane fade" id="tabi5">
+     	              <table class="table table-hover">
+     	                <tr><th>Location</th><th>Rule</th><th class="text-right"><span class="glyphicon glyphicon-download" ng-click="downloadRules()"></span></th></tr>
+     	                <tr ng-repeat="r in savedRules">
+     	                  <td>{{r.paragraph.fullKey}}</td>
+     	                  <td>{{r.rule}}</td>
+     	                  <td class="text-right" style="width: 50px">
+     	                    <glyphicon class="glyphicon glyphicon-pencil" ng-click="editRule(r)"></span>
+     	                    <glyphicon class="glyphicon glyphicon-remove" ng-click="dropRule($index)"></span>
+     	                  </td>
+     	                </tr>
+     	              </table>
+     	            </div>
+     	            
+     	          </div>
+     	        </div>
+     	      </div>
+     	    </div>
+     	  </div>
+     	
+		<div id="saveModal" class="modal fade" role="dialog">
+		  <div class="modal-dialog">
+		    <div class="modal-content">
+		      <div class="modal-header">
+		        <span class="glyphicon glyphicon-remove close" data-dismiss="modal"> </span>
+		        <h4 class="modal-title">Save rule</h4>
+		      </div>
+		      <div class="modal-body">
+		        <div class="well" ng-bind-html="newRule.paragraph.fullText">
+		        </div>
+		        <form>
+		          <div class="form-group">
+		            <label for="txtSaveRule">Rule
+                      <div class="btn-group btn-group-xs" role="group">
+                        <button type="button" class="btn disabled">order: </button>
+                        <button type="button" class="btn" ng-class="{'btn-primary': elemOrder=='+FirstEntOccId', 'btn-default': elemOrder=='+RuleElementSeq'}" ng-click="elemOrder='+FirstEntOccId'; updateRuleString();" >original</button>
+                        <button type="button" class="btn" ng-class="{'btn-primary': elemOrder=='+RuleElementSeq', 'btn-default': elemOrder=='+FirstEntOccId'}" ng-click="elemOrder='+RuleElementSeq'; updateRuleString();" >rule</button>
+                      </div>
+                      <div class="btn-group btn-group-xs" role="group">
+                        <button type="button" class="btn disabled">string: </button>
+                        <button type="button" class="btn" ng-class="{'btn-primary': ruleStringMode=='literal', 'btn-default': ruleStringMode=='term'}" ng-click="ruleStringMode='literal'; updateRuleString();" >literal</button>
+                        <button type="button" class="btn" ng-class="{'btn-primary': ruleStringMode=='term', 'btn-default': ruleStringMode=='literal'}" ng-click="ruleStringMode='term'; updateRuleString();" >term</button>
+                      </div>
+		            </label>
+  		            <input id="txtSaveRule" type="text" class="form-control" ng-model="newRule.rule" />
+  		          </div>
+		          <div class="form-group">
+		            <label for="txtSaveComments">Comments</label>
+  		            <textarea id="txtSaveComments" class="form-control" ng-model="newRule.comments"> </textarea>
+  		          </div>
+		        </form>
+		      </div>
+  		      <div class="modal-footer">
+ 	            <button type="submit" class="btn btn-default" ng-click="saveRule(false)">Save</button>
+		        <button type="submit" class="btn btn-primary" ng-click="saveRule(true)">Save and drop paragraph</button>
+		      </div>
+		    </div>
+		  </div>
+		</div>
+     	
+     </div>
+     
+     
+    <script type="text/javascript" src="nglib/jquery-1.9.0.min.js"></script>
+    <script type="text/javascript" src="nglib/angular.min.js"></script>  <!--general angular framework-->
+    <script type="text/javascript" src="nglib/bootstrap/js/bootstrap.min.js"></script>  <!--twitter bootstrap framework -->
+    <script type="text/javascript" src="nglib/angular-resource.min.js"></script>  <!--angular tools for resources (like $resource for rest)  -->
+    <script type="text/javascript" src="nglib/angular-sanitize.min.js"></script>  <!--angular tools for sanitize (html safe output like $sce -->
+    <script type="text/javascript" src="RulesBuilderDemo.js"></script>
+   </div> <!--container-->
+  </body>
+</html>
+]]></CSP>
+</Export>

@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Export generator="Cache" version="25">
+<Class name="Demo.RulesBuilder.UI.SimpleDocumentViewer">
+<Super>%ZEN.Component.page</Super>
+<TimeCreated>63886,42726.322176</TimeCreated>
+
+<Property name="doc">
+<Type>%String</Type>
+</Property>
+
+<XData name="Contents">
+<XMLNamespace>http://www.intersystems.com/zen</XMLNamespace>
+<Data><![CDATA[
+<page title="Document viewer">
+<select label="document" sql="SELECT DISTINCT DocumentName FROM Demo_RulesBuilder.Paragraph" onchange="zenPage.changeDoc(zenThis.getValue());" />
+<spacer height="20" />
+<html id="html" OnDrawContent="DrawDocument" />
+</page>
+]]></Data>
+</XData>
+
+<Method name="changeDoc">
+<FormalSpec>doc</FormalSpec>
+<Language>javascript</Language>
+<ClientMethod>1</ClientMethod>
+<Implementation><![CDATA[
+	var sc = zenPage.setProperty('doc', doc);
+	zen('html').refreshContents();
+]]></Implementation>
+</Method>
+
+<Method name="DrawDocument">
+<FormalSpec>pSeed</FormalSpec>
+<ReturnType>%Status</ReturnType>
+<Implementation><![CDATA[
+	set tSC = $$$OK
+	try {
+		set tDocName = ..doc, tMaxLevel=0
+		&SQL(SELECT MAX("Level") INTO :tMaxLevel FROM Demo_RulesBuilder.Paragraph WHERE DocumentName = :tDocName)
+		
+		if (tDocName="") || 'tMaxLevel {
+			write "no document selected"
+			quit
+		}
+		
+		&html<<table class="doc"><tr>>
+		for i = 1:1:tMaxLevel {
+			&html<<th>&nbsp;</th>>
+		}
+		&html<<th>Text</th>>
+		&html<<th>StartPos</th>>
+		&html<<th>EndPos</th>>
+		&html<</tr>>
+		
+		set tResult = ##class(%SQL.Statement).%ExecDirect(,"SELECT * FROM Demo_RulesBuilder.Paragraph WHERE DocumentName = :tDocName ORDER BY StartPos ASC")
+		while tResult.%Next() {
+			&html<<tr>>
+			for i = 1:1:tMaxLevel {
+				if i = tResult.%Get("Level") {
+					&html<<td>>
+					write tResult.%Get("Key")
+					&html<</td>>
+				} else {
+					&html<<td>&nbsp;</td>>
+				}
+			}
+			&html<<td>>
+			write tResult.%Get("TextContents")
+			&html<</td><td>>
+			write tResult.%Get("StartPos")
+			&html<</td><td>>
+			write tResult.%Get("EndPos")
+			&html<</td>>
+			&html<</tr>>
+		}
+	} catch (ex) {
+		set tSC = ex.AsStatus()
+	}
+	quit tSC
+]]></Implementation>
+</Method>
+
+<XData name="Style">
+<Description>
+Default style for Zen pages</Description>
+<Data><![CDATA[
+<style type="text/css">
+body {
+	padding: 20px;
+}
+
+table.doc {
+	border-spacing: 0px;
+    border-collapse: collapse;
+}
+table.doc td,
+table.doc td {
+	border: 1px solid #777777;
+}
+</style>
+]]></Data>
+</XData>
+</Class>
+</Export>
