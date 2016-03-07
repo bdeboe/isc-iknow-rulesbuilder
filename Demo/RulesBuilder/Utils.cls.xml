@@ -12,7 +12,7 @@
 	try {
 		set:pWebAppName="" pWebAppName = "/csp/"_tCurrentNS_"/rbREST/"
 		set tProperties("NameSpace") = tCurrentNS
-		set tProperties("DispatchClass") = "Demo.DictionaryBuilder.RestHandler"
+		set tProperties("DispatchClass") = "Demo.RulesBuilder.RestHandler"
 		set tProperties("AutheEnabled") = $$$AutheUnauthenticated
 		//set tProperties("iKnowEnabled") = 1
 		
