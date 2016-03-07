@@ -8,7 +8,7 @@ The application also includes code to "parse" the paragraph structure of texts w
 ### Installation notes
 * Import associated code
 * Create a REST handler web application by invoking Demo.RulesBuilder.Utils:CreateRestWebApp() in your namespace of choice
-* Access the application through http://localhost:_port_/csp/_namespace_/RulesBuilder.csp?_123_ where _123_ is the ID of the domain managed by Demo.RulesBuilder.ParagraphDomain, which you can access from its %GetDomainId() method.
+* Access the application through http://localhost:_port_/csp/_namespace_/RulesBuilderDemo.csp?_123_ where _123_ is the ID of the domain managed by Demo.RulesBuilder.ParagraphDomain, which you can access from its %GetDomainId() method.
 
 
 ### Other notes
