@@ -405,13 +405,6 @@ isc-droppable="selectItem(item, data)" ng-click="selectItem(item);"><span class=
     	        </div>
      	        <div class="panel-body">
      	          <div class="tab-content">
-     	          
-                    <!--div class="tab-pane fade" id="tabi1">
-     	              <input type="file" id="file" name="file" class="form-inline" />
-     	              <button class="btn form-inline"  ng-click="uploadFile()"
-     	              	ng-class="{'btn-primary': document.getElementById('file').files.length>0,
-     	              			   'btn-default': document.getElementById('file').files.length==0 }">Load</button>
-     	            </div-->
      	            
                     <div class="tab-pane fade in active" id="tabi2">
                       <div class="row">

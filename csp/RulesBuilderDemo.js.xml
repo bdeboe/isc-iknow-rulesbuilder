@@ -452,6 +452,15 @@ rulesApp.controller('DomainController', ['$scope', '$filter', '$resource', '$sce
 			delete temp;
 		});
 	}
+	
+	$scope.getDictItems = function(dname) {
+		for (d in $scope.dictionaries) {
+			if (dname == $scope.dictionaries[d].name) {
+				return $scope.dictionaries[d].items;
+			}
+		}
+	}
+
 
 
 // INHERIT FROM DictionaryBuilder.js
