@@ -16,30 +16,6 @@ var rulesApp = angular.module('rulesApp', ['ngResource', 'ngSanitize'])
     }
   }
 });
-
-rulesApp.controller('DomainController', ['$scope', 'restFeatures', function($scope, restFeatures) {
-
-	// initialize ikDomain
-	function initDomain() {
-	var domain = location.search.substr(1).split('#')[0];
-	if (!isNaN(parseInt(domain))) return parseInt(domain);
-	var regexp = /^([0-9]+)/;
-	var parsed = regexp.exec(domain);
-	if (parsed && (parsed.length>0) && !isNaN(parseInt(parsed[0]))) return parsed[0];
-		alert('No domain specified in URL!'); 
-		return 0;
-	}
-	$scope.ikDomain = initDomain();
-	 
-	// retrieve capabilities
-   	function getFeatures() {
-       tempFeatures = restFeatures.query({domain:$scope.ikDomain},function(data) {
-	     $scope.Features = tempFeatures;
-	     delete tempFeatures;
-       });
-   	}
-   	getFeatures();
-}]);
 	 
 hostURL = function() {
 	return location.href.split('/').slice(0,-1).join('/')+'/rbREST/Domain/:domain/';
@@ -52,13 +28,6 @@ $('#myTabs a').click(function (e) {
    
 function showModalError(title, part1, part2, part3) {
 	alert(title+'\n\n'+part1);
-	/*
-	$('#errorModal').find('.modal-title').text(title);
-	$('#errorModal').find('.modal-body-part1').text(part1);
-	$('#errorModal').find('.modal-body-part2').text(part2);
-	$('#errorModal').find('.modal-body-part3').text(part3);
-	$('#errorModal').modal({"backdrop":"static"});
-	*/
 };
  
 function resourceErrorHandler(response) {
@@ -99,31 +68,16 @@ function transformResponseHandler(data, header) {
 };
 
 
-rulesApp.factory('restFeatures', function ($resource) {
-	return $resource(hostURL() + "Features", {}, {
-		query: { method: "GET", isArray: false,
+rulesApp.factory('restEntities', function ($resource) {
+	return $resource(hostURL() + "Entities", {}, {
+		query: { method: "POST", isArray: false,
 					interceptor : {
-						response : resourceSuccessHandler,
 						responseError : resourceErrorHandler
 					},
 					transformResponse : transformResponseHandler
 		}
 	});
 });
-
-
-
-rulesApp.factory('restEntities', function ($resource) {
-	return $resource(hostURL() + "Entities/:entity?SourceFilter=:sourceFilter", {}, {
-		query: { method: "GET", isArray: false,
-					interceptor : {
-						response : resourceSuccessHandler,
-						responseError : resourceErrorHandler
-					},
-					transformResponse : transformResponseHandler
-		}
-	});
-}); //app.factory 'restSimilar'
 
 rulesApp.factory('restSentencesByEntity', function ($resource) {
 	return $resource(hostURL() + "Sentences/Entity/:entity", {}, {
@@ -210,29 +164,20 @@ rulesApp.factory('restParse', function ($resource) {
 });
 
 
-rulesApp.controller('ConceptsController', ['$scope', '$filter', '$resource', '$sce', 'restEntities', 'restSentencesByEntity', 'restRuleDefs', 'restExtract', 'restDictionaries', 'restParse', 'restIndex', function($scope, $filter, $resource, $sce, restEntities, restSentencesByEntity, restRuleDefs, restExtract, restDictionaries, restParse, restIndex) {
+rulesApp.controller('DomainController', ['$scope', '$filter', '$resource', '$sce', 'restEntities', 'restSentencesByEntity', 'restRuleDefs', 'restExtract', 'restDictionaries', 'restParse', 'restIndex', 'restDictionaries', 'restBlacklists', function($scope, $filter, $resource, $sce, restEntities, restSentencesByEntity, restRuleDefs, restExtract, restDictionaries, restParse, restIndex, restDictionaries, restBlacklists) {
 	
-	
-	$scope.autocomplete = function() {
-		if (($scope.discoString != '') && ($scope.discoString.length >= $scope.Features.MinSearchLength)) {
-			$scope.getEntities($scope.discoString);
-		}
-	};
-
-	$scope.getEntities = function (string) {
-		var temp = restEntities.query({domain:$scope.ikDomain, entity:string}, function(data) {
-			$scope.entities = temp.Entities;
-			delete temp;
-		});
-	};
-	
-	$scope.selectEntity = function (entity) {
-		var temp = restSentencesByEntity.query({domain:$scope.ikDomain, entity:entity.EntityValue}, function(data) {
-			$scope.sentences = temp.Sentences;
-			delete temp;
-		});
+	// initialize ikDomain
+	function initDomain() {
+	var domain = location.search.substr(1).split('#')[0];
+	if (!isNaN(parseInt(domain))) return parseInt(domain);
+	var regexp = /^([0-9]+)/;
+	var parsed = regexp.exec(domain);
+	if (parsed && (parsed.length>0) && !isNaN(parseInt(parsed[0]))) return parsed[0];
+		alert('No domain specified in URL!'); 
+		return 0;
 	}
-	
+	$scope.ikDomain = initDomain();
+   	
 	$scope.getRuleDefs = function (string) {
 		var temp = restRuleDefs.query({domain:$scope.ikDomain}, function(data) {
 			$scope.ruleDefs = temp.RuleDefinitions;
@@ -263,10 +208,8 @@ rulesApp.controller('ConceptsController', ['$scope', '$filter', '$resource', '$s
 	}
 	$scope.addRuleElem = function() {
 		var elem = { 'Count': 0, 'Negation': 'N/A', 'Type':'dictionary', 'ItemURI':'ANY' };
-		if ($scope.currentDict.name) {
-			elem.DictName = $scope.currentDict.name;
-		} else if ($scope.dictionaries && ($scope.dictionaries.length>0)) {
-			elem.DictName = $scope.dictionaries[0].name;
+		if ($scope.dictionaries && ($scope.dictionaries.length>0)) {
+			elem.DictName = $scope.dictionaries[$scope.currentDictionary].name;
 		}
 		$scope.currentRuleDef.Elements.push(elem);
 	}
@@ -346,130 +289,6 @@ rulesApp.controller('ConceptsController', ['$scope', '$filter', '$resource', '$s
 		});
 	}
 	
-	$scope.getDictionaries = function(init) {
-		temp = restDictionaries.query({domain:$scope.ikDomain}, function(data) {
-			$scope.dictionaries = temp.dictionaries;
-			delete temp;
-			
-			if (init) {
-				$scope.currentDict = { 'items': $scope.allDictItems()};
-				$scope.currentDictItem = { 'terms' : $scope.allDictTerms()};
-			} else {
-			if ($scope.currentDict.id) {
-					for (d in $scope.dictionaries) {
-						if ($scope.dictionaries[d].id == $scope.currentDict.id) {
-							$scope.currentDict = $scope.dictionaries[d];
-						}
-					}
-				}
-				if ($scope.currentDictItem.id) {
-					for (d in $scope.dictionaries) {
-						for (i in $scope.dictionaries[d].items) {
-							if ($scope.currentDictItem.id == $scope.dictionaries[d].items[i].id) {
-								$scope.currentDictItem = $scope.dictionaries[d].items[i];
-							}
-						}
-					}
-				}
-			}
-		});
-	}
-	$scope.selectDict = function(dict) {
-		if ($scope.currentDict.id == dict.id) {
-			$scope.currentDict = { 'items': $scope.allDictItems() };
-			$scope.currentDictItem = { 'terms' : $scope.allDictTerms() };
-		} else {
-			$scope.currentDict = dict;
-			$scope.currentDictItem = { 'terms' : [] };
-		}
-	}
-	$scope.selectDictItem = function(item) {
-		if ($scope.currentDictItem.id == item.id) {
-			$scope.currentDictItem = { 'terms': $scope.allDictTerms()};
-		} else {
-			$scope.currentDictItem = item;
-		}
-	}
-	$scope.getDictItems = function(dname)  {
-		for (d in $scope.dictionaries) {
-			if (dname == $scope.dictionaries[d].name) {
-				return $scope.dictionaries[d].items;
-			}
-		}
-	}
-	$scope.allDictItems = function() {
-		var items = [];
-		for (d in $scope.dictionaries) {
-			items = items.concat($scope.dictionaries[d].items);
-		}
-		return items;
-	}
-	$scope.allDictTerms = function() {
-		var terms = [];
-		for (d in $scope.dictionaries) {
-			for (i in $scope.dictionaries[d].items) {
-				terms = terms.concat($scope.dictionaries[d].items[i].terms);
-			}
-		}
-		return terms;
-	}
-	$scope.dropDict = function(dict) {
-		for (r in $scope.ruleDefs) {
-			for (e in $scope.ruleDefs[r].Elements) {
-				var el = $scope.ruleDefs[r].Elements[e];
-				if (el.DictName == dict.name) {
-					alert('This dictionary is in use by rule "'+$scope.ruleDefs[r].Name+'" and cannot be deleted');
-					return;
-				}
-			}
-		}
-		if (confirm('Do you really want to remove dictionary "'+dict.name+'"?')) {
-			var temp = restDictionaries.update({domain:$scope.ikDomain}, {'delete': true, 'type': 'dict', 'id': dict.id}, function(data) {
-				$scope.getDictionaries();
-			});
-		}
-	}
-	$scope.dropDictItem = function(item) {
-		for (r in $scope.ruleDefs) {
-			for (e in $scope.ruleDefs[r].Elements) {
-				var el = $scope.ruleDefs[r].Elements[e];
-				if (el.ItemURI == item.uri) {
-					alert('This item is in use by rule "'+$scope.ruleDefs[r].Name+'" and cannot be deleted');
-					return;
-				}
-			}
-		}
-		if (confirm('Do you really want to remove item "'+item.name+'"?')) {
-			var temp = restDictionaries.update({domain:$scope.ikDomain}, {'delete': true, 'type': 'item', 'id': item.id}, function(data) {
-				$scope.getDictionaries();
-			});
-		}
-	}
-	$scope.dropDictTerm = function(term) {
-		if (confirm('Do you really want to remove term "'+term.string+'"?')) {
-			var temp = restDictionaries.update({domain:$scope.ikDomain}, {'delete': true, 'type': 'term', 'id': term.id}, function(data) {
-				$scope.getDictionaries();
-			});
-		}
-	}
-	$scope.createDict = function(type) {
-		var obj = $scope.newDict[type];
-		obj.dictId = $scope.currentDict.id;
-		obj.itemId = $scope.currentDictItem.id;
-		obj.create = true;
-		obj.type = type;
-		var temp = restDictionaries.update({domain:$scope.ikDomain}, obj, function(data) {
-			$scope.getDictionaries();
-			$scope.newDict[type] = {};
-			$('#newDict-'+type).modal('hide');
-		});
-	}
-	$scope.tryItemURI = function() {
-		if (($scope.newDict['item'].uri == null) || ($scope.newDict['item'].uri == '')) {
-			$scope.newDict['item'].uri = ':'+$scope.currentDict.name+':'+$scope.newDict['item'].name;
-		}
-	}
-	
 	$scope.toggleValidExtractsOnly = function() {
 		$scope.validExtractsOnly = !$scope.validExtractsOnly;
 	}
@@ -486,11 +305,6 @@ rulesApp.controller('ConceptsController', ['$scope', '$filter', '$resource', '$s
 	
 	// initialize
 	$scope.docName = 'MyDoc'+Math.round(Math.random()*10000);
-	$scope.discoString = '';
-	$scope.getEntities();
-	
-	$scope.getDictionaries(true);
-	
 	$scope.getRuleDefs();
 	
 	$scope.elemOrder = '+FirstEntOccId';
@@ -632,5 +446,340 @@ rulesApp.controller('ConceptsController', ['$scope', '$filter', '$resource', '$s
 	    document.body.removeChild(link);
 	}
 	
-}]);]]></CSP>
+	$scope.selectEntity = function (entity) {
+		var temp = restSentencesByEntity.query({domain:$scope.ikDomain, entity:entity.EntityValue}, function(data) {
+			$scope.sentences = temp.Sentences;
+			delete temp;
+		});
+	}
+
+
+// INHERIT FROM DictionaryBuilder.js
+//	1: copy entire contents of DictionaryBuilder.js below
+//  2: get rid of 
+//		var dictApp = angular.module('dictApp' ...
+//		hostURL = function() { ...
+// 		function initDomain() { ...
+//		function resourceErrorHandler(response) { ...
+//		function transformResponseHandler(data, header) { ...
+//		dictApp.factory('restEntities' ...
+//		dictApp.factory('restSentencesByEntity' ...
+//  3: remove controller definition "opener", so we just add onto the existing one started above
+//  4: search-and-replace dictApp >> rulesApp
+//	5: set $scope.getMatches = false;
+
+	$scope.getBlacklists = function() {
+		var tempbl = restBlacklists.query({domain:$scope.ikDomain}, function(data) {
+			if (!tempbl.blacklists || (tempbl.blacklists.length==0)) {
+				$scope.blacklists = [{ name:'Default blacklist', entries:[]}];
+			} else {
+				$scope.blacklists = tempbl.blacklists;
+			}
+			delete tempbl;
+		});
+	}
+	$scope.blacklists = [];
+	$scope.getBlacklists();
+	$scope.currentBlacklist = 0;
+	$scope.addToBlacklist = function(data) {
+		$scope.blacklists[$scope.currentBlacklist].entries.push(data);
+		
+		// to avoid a server query, remove from entity list
+		for (e in $scope.entities) {
+			if ($scope.entities[e].EntityValue == data) {
+				$scope.entities[e].skip = true;
+			}
+		}
+	}
+	$scope.removeFromBlacklist = function(entry) {
+		var arr = $scope.blacklists[$scope.currentBlacklist].entries;
+		var index = $arr.indexOf(entry);
+		$scope.blacklists[$scope.currentBlacklist].entries = arr.slice(0,index).concat(arr.slice(index+1));
+	}
+	$scope.selectBlacklist = function(index) {
+		if ((index < $scope.blacklists.length) && (index >= 0)) {
+			$scope.currentBlacklist = index;
+		}
+	}
+	
+	$scope.getMatches = false;
+	$scope.getEntities = function (string, overrideGetMatches) {
+		var bl = ($scope.blacklists.length > $scope.currentBlacklist) ? [$scope.blacklists[$scope.currentBlacklist].id] : [];
+		var temp = restEntities.query({domain:$scope.ikDomain}, {entity:string, blacklists:bl, getMatches:$scope.getMatches || overrideGetMatches}, function(data) {
+			$scope.entities = temp.Entities;
+			delete temp;
+		});
+	};
+	$scope.getEntities();
+	
+	$scope.typeEntity = function(event, overrideGetMatches) {
+		if (event && ((event.keyCode==13) || (event.which==13))) {
+			$scope.getEntities($scope.term, overrideGetMatches);
+		}
+	}
+	
+	
+	$scope.getDictionaries = function() {
+		temp = restDictionaries.query({domain:$scope.ikDomain}, function(data) {
+			$scope.dictionaries = temp.dictionaries;
+			delete temp;
+		});
+	}
+	$scope.getDictionaries();
+	$scope.currentDictionary = 0;
+	$scope.currentItem = {};
+	$scope.createDictionary = function() {
+		$scope.dictionaries.push({ name: $scope.dictName, items: []});
+		$scope.dictName='';
+	}
+	$scope.selectDictionary = function(index) {
+		if ((index < $scope.dictionaries.length) && (index >= 0))
+			$scope.currentDictionary = index;
+	}
+	$scope.editDict = function(index) {
+		$scope.currentDictionary = index;
+		$('#modDict').modal('show');
+	}
+	$scope.dropDict = function(index) {
+		var arr = $scope.dictionaries.slice(0,index);
+		$scope.dictionaries = arr.concat($scope.dictionaries.slice(index+1));
+		$('#modDict').modal('hide');
+	}
+	$scope.saveDict = function() {
+		$('#modDict').modal('hide');
+	}
+	
+	$scope.addTerm = function(term, item) {
+		item.terms[item.terms.length] = { string: term };
+		var sc = $scope.updateMatchScores(term);
+		$scope.$apply();
+	}
+	$scope.updateMatchScores = function(term) {
+		for (e in $scope.entities) {
+			var ent = $scope.entities[e];
+			if (ent.EntityValue == term) {
+				ent.Matches.push({Dict:$scope.currentDictionary, Score:1});
+				ent.HighestScore = 1;
+			} else if (''.concat(ent.EntityValue).indexOf(term)>=0) { // quick best-effort lookup
+				ent.Matches.push({Dict:$scope.currentDictionary, Score:1});
+				if (ent.HighestScore < 1) {
+					ent.HighestScore = 0.5;
+				}
+			}
+		}
+	}
+	
+	$scope.selectItem = function(item, newTerm) {
+		$scope.currentItem = item;
+		if (newTerm) { 
+			$scope.currentItem.terms.push({ string: newTerm }); 
+			$scope.$apply();
+		}
+		$('#modItem').modal('show');
+		if (newTerm) {
+			setTimeout(function() { $('.isc-term-string').last().get(0).focus() }, 500);
+		}
+	}
+	$scope.newItem = function(term, saveImmediately) {
+		$scope.currentItem = {  name: term, 
+								uri: ':'+$scope.dictionaries[$scope.currentDictionary].name+':'+term, 
+								terms: [{string:term}],
+								isNew : !saveImmediately};
+		if (saveImmediately) {
+			$scope.dictionaries[$scope.currentDictionary].items.push($scope.currentItem);
+			var sc = $scope.updateMatchScores(term);
+		} else {
+			$('#modItem').modal('show');
+		}
+		if (term != '') $scope.$apply();
+	}
+	$scope.saveItem = function() {
+		if ($scope.currentItem.isNew) {
+			$scope.currentItem.isNew = false;
+			$scope.dictionaries[$scope.currentDictionary].items.push($scope.currentItem);
+		}
+		$('#modItem').modal('hide');
+	}
+	$scope.dropTerm = function(index) {
+		var arr = $scope.currentItem.terms.slice(0,index);
+		$scope.currentItem.terms = arr.concat($scope.currentItem.terms.slice(index+1));
+	}
+	$scope.dropItem = function(item) {
+		var arr = [];
+		for (i in $scope.dictionaries[$scope.currentDictionary].items) {
+			var ii = $scope.dictionaries[$scope.currentDictionary].items[i];
+			if (ii.uri != item.uri) {
+				arr.push(ii);
+			}
+		}
+		$scope.dictionaries[$scope.currentDictionary].items = arr;
+		$('#modItem').modal('hide');
+	}
+	
+	
+	$scope.saveAll = function() {
+		var temp = restDictionaries.update({domain:$scope.ikDomain}, {'dictionaries':$scope.dictionaries, 'blacklists':$scope.blacklists}, function(data) {
+			// TODO: catch errors?
+			$scope.getDictionaries();
+			$scope.getBlacklists();
+			$scope.getEntities($scope.term);
+		});
+	}
+	
+	$scope.filterEntities = function(prop){
+	    return function(item){
+		  if (item.HighestScore == null) return true;
+	      return (item.HighestScore < $scope.entFilter) && !item.skip;
+	    }
+	}
+	$scope.entFilter = 2;
+}]);
+	 
+ 
+
+rulesApp.factory('restDictionaries', function ($resource) {
+	return $resource(hostURL() + "Dictionaries", {}, {
+		query: { method: "GET", isArray: false,
+					interceptor : {
+						responseError : resourceErrorHandler
+					},
+					transformResponse : transformResponseHandler
+		},
+		update: { method: "POST", isArray: false,
+					interceptor : {
+						responseError : resourceErrorHandler
+					}
+		}
+	});
+});
+
+rulesApp.factory('restBlacklists', function ($resource) {
+	return $resource(hostURL() + "Blacklists", {}, {
+		query: { method: "GET", isArray: false,
+					interceptor : {
+						responseError : resourceErrorHandler
+					},
+					transformResponse : transformResponseHandler
+		}
+	});
+});
+
+var _isc_drag_scroll = false;
+rulesApp.directive('iscDraggable', function($document) {
+	
+	var mouseX, mouseY;
+    $document.on("dragover", function(event){
+      mouseY = event.originalEvent.clientY;
+    });
+    
+    return {
+        scope: {
+	        data: '@iscDraggable'
+	    },
+	    link : function(scope, element, attr) {
+		    
+	        // this gives us the native JS object
+	        var el = element[0];
+
+	        el.draggable = true;
+
+	        el.addEventListener(
+	            'dragstart',
+	            function(e) {
+	                e.dataTransfer.effectAllowed = 'move';
+	                e.dataTransfer.setData('DragValue', scope.data);
+	                var targets = $('.isc-droppable');
+	                targets.filter('.btn').removeClass('btn-default').addClass('btn-info');
+	                targets.filter('tr').addClass('info');
+	                targets.filter('.panel-body').addClass('bg-info');
+	                return false;
+	            },
+	            false
+	        );
+	        
+	        el.addEventListener(
+	            'dragend',
+	            function(e) {
+		            _isc_drag_scroll = false;
+	                var targets = $('.isc-droppable');
+	                targets.filter('.btn').removeClass('btn-info').addClass('btn-default');
+	                targets.filter('tr').removeClass('info');
+	                targets.filter('.panel-body').removeClass('bg-info');
+	                return false;
+	            },
+	            false
+	        );
+	        
+	        el.addEventListener(
+	        	'drag',
+	        	function(e) {
+		        	_isc_drag_scroll = false;
+			        if (mouseY < 50) {
+			            _isc_drag_scroll = true;
+			            _iscDragScroll(-1);
+			        }
+			        if (mouseY > (window.innerHeight - 50)) {
+			            _isc_drag_scroll = true;
+			            _iscDragScroll(1);
+			        }
+	        	}
+	        );
+    	}
+    }
+});
+
+_iscDragScroll = function(step) {
+    var scrollY = $(window).scrollTop();
+    $(window).scrollTop(scrollY + step);
+    if (_isc_drag_scroll) {
+        setTimeout(function () { _iscDragScroll(step) }, 20);
+    }
+}
+
+rulesApp.directive('iscDroppable', function() {
+    return {
+        scope: {
+	        dropFunction: '&iscDroppable',
+	        dragEnterFunction: '&iscDragEnter'
+	    },
+        link: function(scope, element) {
+            // again we need the native object
+            var el = element[0];
+            
+            el.addEventListener(
+			    'dragover',
+			    function(e) {
+			        e.dataTransfer.dropEffect = 'move';
+			        // allows us to drop
+			        if (e.preventDefault) e.preventDefault();
+			        return false;
+			    },
+			    false
+			);
+			
+			el.addEventListener(
+			    'dragenter',
+			    function(e) {
+			        //this.classList.add('over');
+			        var sc = scope.dragEnterFunction({data: e.dataTransfer.getData('DragValue')});
+			        scope.$apply();
+			        return false;
+			    },
+			    false
+			);
+			
+			el.addEventListener(
+			    'drop',
+			    function(e) {
+			        // Stops some browsers from redirecting.
+			        if (e.stopPropagation) e.stopPropagation();
+	                var sc = scope.dropFunction({data: e.dataTransfer.getData('DragValue')});
+	                scope.$apply();
+			        return false;
+			    },
+			    false
+			);
+        }
+    }
+});]]></CSP>
 </Export>
