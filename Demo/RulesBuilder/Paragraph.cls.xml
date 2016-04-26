@@ -120,7 +120,7 @@
 			set tString=""
 			for i = 1:1:tSentCount {
 				set:i>1 tString = tString_" "
-				set tString = tString _ ##class(%iKnow.Queries.SentenceAPI).GetHighlighted(pDomainId, i, .pMarkup, vSrcId,, .tSC)
+				set tString = tString _ "<span id=""par-"_..%Id()_"-sent-"_i_""">" _ ##class(%iKnow.Queries.SentenceAPI).GetHighlighted(pDomainId, i, .pMarkup, vSrcId,, .tSC) _ "</span>"
 				quit:$$$ISERR(tSC)
 			}
 			quit:$$$ISERR(tSC)

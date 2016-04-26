@@ -56,7 +56,7 @@
 		} elseif tElement.Type="item" {
 			set tString = tString _ "["_tElement.Name_"]"
 		}
-		set tString = tString_$case(tElement.Count, 0:"?", 1:"", 2:"+", :"")
+		set tString = tString_$case(tElement.Count, 0:"?", 1:"", 2:"+", 3:"*", :"")
 	}
 	quit tString
 ]]></Implementation>
@@ -205,7 +205,7 @@ and therefore having a high chance of matching it.</Description>
 					quit:tMatchId=""
 					
 					set tItemId = $lg(tData,3)
-					continue:$d(tItemsFound(tItemId))
+					continue:$d(tItemsFound(tItemId))&&(tElement.Count<3)
 					set tItemsFound(tItemId) = ""
 					
 					
