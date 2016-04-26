@@ -293,8 +293,15 @@ rulesApp.controller('DomainController', ['$scope', '$filter', '$resource', '$sce
 		$scope.validExtractsOnly = !$scope.validExtractsOnly;
 	}
 	
-	$scope.toggleParagraphHighlight = function(par, r) {
-		par.fullText = $sce.trustAsHtml(r.HighlightingResult);
+	$scope.toggleParagraphHighlight = function(par, r, on) {
+		if (on) {
+			par.fullText = $sce.trustAsHtml(r.HighlightingResult);
+			if (r.SentenceId) {
+				$('#par-'+par.paragraphId+'-sent-'+r.SentenceId).css('background-color', 'Gainsboro');
+			}
+		} else {
+			$('#par-'+par.paragraphId+'-sent-'+r.SentenceId).css('background-color', '');
+		}
 	}
 	
 	$scope.greaterThan = function(prop, val){

@@ -66,6 +66,7 @@ the classic $$$FILTERALLANDSORT</Description>
 	try {
 		set tJSON = ##class(%ZEN.proxyObject).%New()
 		set tJSON.ExtractionResults = ##class(%ListOfObjects).%New()
+		set tSourceObj = ##class(%iKnow.Objects.Source).PKINDEXOpen(pDomainId, pSourceId)
 		
 		set tStatement = ##class(%SQL.Statement).%New()
 		set tSC = tStatement.%Prepare("SELECT ID FROM Demo_RulesBuilder.ExtractionResult WHERE DomainId = ? AND SourceId = ? AND Score > 0 ORDER BY Score DESC")
@@ -78,6 +79,7 @@ the classic $$$FILTERALLANDSORT</Description>
 			set tProxy.MeetsMandatory = tExtract.MeetsMandatory
 			set tProxy.MeetsOrder = tExtract.MeetsOrder
 			set tProxy.Score = tExtract.Score
+			set:tExtract.SentenceId tProxy.SentenceId = tExtract.SentenceId-tSourceObj.FirstSentenceId+1
 			
 			set tProxy.RuleDefinition = ##class(%ZEN.proxyObject).%New()
 			set tProxy.RuleDefinition.DomainId = tExtract.RuleDefinition.DomainId

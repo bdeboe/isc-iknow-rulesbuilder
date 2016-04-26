@@ -361,7 +361,8 @@ isc-droppable="selectItem(item, data)" ng-click="selectItem(item);"><span class=
      	            <select ng-model="elem.Count" convert-to-number>
      	              <option value="0">optional</option>
      	              <option value="1">mandatory</option>
-     	              <option value="2">multiple</option>
+     	              <option value="2">multiple (keep best)</option>
+     	              <option value="3">multiple (keep all)</option>
      	            </select>
      	          </td>
      	          <td>
@@ -489,7 +490,7 @@ isc-droppable="selectItem(item, data)" ng-click="selectItem(item);"><span class=
               	          <td width="50%">
               	          
               	            <table class="table table-hover">
-              	              <tr ng-repeat="r in par.rules" ng-mouseenter="toggleParagraphHighlight(par, r)">
+              	              <tr ng-repeat="r in par.rules" ng-mouseenter="toggleParagraphHighlight(par, r, true)" ng-mouseleave="toggleParagraphHighlight(par, r, false)">
               	                <td>
               	                  {{r.RuleDefinition.Name}}
               	                  <a style="cursor: pointer;" rel="popover" class="ruleDefDetail" data-toggle="popover" title="Rule structure" data-content="{{r.RuleDefinition.StringRepresentation}}" >

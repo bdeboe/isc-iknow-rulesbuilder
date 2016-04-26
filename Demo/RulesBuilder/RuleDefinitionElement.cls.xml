@@ -17,7 +17,8 @@
 <Description>
 0 = optional
 1 = mandatory
-2 = one or more</Description>
+2 = one or more (keep best)
+2 = one or more (keep all)</Description>
 <Type>%Integer</Type>
 <InitialExpression>1</InitialExpression>
 </Property>
