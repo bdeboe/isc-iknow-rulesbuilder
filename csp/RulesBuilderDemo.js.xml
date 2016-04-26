@@ -300,7 +300,9 @@ rulesApp.controller('DomainController', ['$scope', '$filter', '$resource', '$sce
 				$('#par-'+par.paragraphId+'-sent-'+r.SentenceId).css('background-color', 'Gainsboro');
 			}
 		} else {
-			$('#par-'+par.paragraphId+'-sent-'+r.SentenceId).css('background-color', '');
+			if (r.SentenceId) {
+				$('#par-'+par.paragraphId+'-sent-'+r.SentenceId).css('background-color', '');
+			}
 		}
 	}
 	
@@ -797,5 +799,6 @@ rulesApp.directive('iscDroppable', function() {
 			);
         }
     }
-});]]></CSP>
+});
+]]></CSP>
 </Export>
