@@ -24,19 +24,19 @@ the classic $$$FILTERALLANDSORT</Description>
 <Default>aelotwu</Default>
 </Parameter>
 
+<Parameter name="CONTENTTYPE">
+<Default>application/json</Default>
+</Parameter>
+
 <XData name="UrlMap">
 <XMLNamespace>http://www.intersystems.com/urlmap</XMLNamespace>
 <Data><![CDATA[
 <Routes>
 
 <Route Url="/Domain/:domain/Sentences/Entity/:entity" Method="GET" Call="GetSentencesByEntity"/>
+<Route Url="/Domain/:domain/Sentences/Entity" Method="POST" Call="GetSentencesByEntity"/>
 
 <Route Url="/Domain/:domain/Entities" Method="POST" Call="GetEntities"/>
-
-<!--
-<Route Url="/Domain/:domain/Dictionaries" Method="GET" Call="GetDictionaries"/>
-<Route Url="/Domain/:domain/Dictionaries" Method="POST" Call="UpdateDictionaries"/>
--->
 
 <Route Url="/Domain/:domain/Blacklists" Method="GET" Call="GetBlacklists"/>
 
@@ -339,9 +339,14 @@ the classic $$$FILTERALLANDSORT</Description>
 		set tSC = ##class(%ZEN.Auxiliary.jsonProvider).%ConvertJSONToObject(tJSONString,,.tRequest)
 		quit:$$$ISERR(tSC)
 		
+		
 		if (tRequest.delete || tRequest.obj.ID) { // update = delete first
 			set tSC = ##class(RuleDefinition).%DeleteId(tRequest.obj.ID)
-			quit:tRequest.delete
+			quit:$$$ISERR(tSC)
+			if tRequest.delete {
+				write "{}" // dummy output
+				quit
+			}
 		}
 		
 		set tRuleDef = ##class(RuleDefinition).%New()
@@ -360,11 +365,14 @@ the classic $$$FILTERALLANDSORT</Description>
 		}
 		
 		set tSC = tRuleDef.%Save()
+		quit:$$$ISERR(tSC)
 		
+		// dummy output
+		write "{}" 
 		
 	} catch (ex) {
 		set tSC = ex.AsStatus()
-	}
+	} s ^bdb($i(^bdb)) = tSC
 	quit ..ErrorHandler(tSC)
 ]]></Implementation>
 </Method>
@@ -402,12 +410,22 @@ Retrieves all sources (including full text and metadata) in the domain and print
 <Description><![CDATA[
 Retrieves all sentences (including full text) in the domain containing <var>pEntity</var> and prints them as JSON]]></Description>
 <ClassMethod>1</ClassMethod>
-<FormalSpec>pDomainId:%Integer,pEntity:%String</FormalSpec>
+<FormalSpec>pDomainId:%Integer,pEntity:%String=""</FormalSpec>
 <ReturnType>%Status</ReturnType>
 <Implementation><![CDATA[
 	set tSC = $$$OK
 	try {
 		set:$data(%response) %response.ContentType="application/json"
+		
+		if $isobject(%request.Content) {
+			set tJSONString = ""
+			while '%request.Content.AtEnd {
+				set tJSONString = tJSONString_$zcvt(%request.Content.ReadLine(),"I","UTF8")
+			}
+			set tSC = ##class(%ZEN.Auxiliary.jsonProvider).%ConvertJSONToObject(tJSONString,,.tRequest)
+			quit:$$$ISERR(tSC)
+			set:$isobject(tRequest.entity) pEntity = tRequest.entity.EntityValue
+		}
 		
 		set tEntityId = ##class(%iKnow.Queries.EntityAPI).GetId(pDomainId, pEntity)
 		set tHighlight("ENTITY", tEntityId) = "<b class=""entity"" title=""entity '"_$zcvt(pEntity,"O","HTML")_"'"">"
@@ -974,6 +992,8 @@ Simple error handler, converting a <class>%Status</class> object to a JSON repre
 			quit:$$$ISERR(tSC)
 		}
 		quit:$$$ISERR(tSC)
+		
+		write "{}" // dummy output
 		
 	} catch (ex) {
 		set tSC = ex.AsStatus()

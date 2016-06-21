@@ -2,7 +2,8 @@
 <Export generator="Cache" version="25">
 <CSP name="RulesBuilderDemo.js" application="/csp/rulesbuilder/" default="1"><![CDATA[
 
-var rulesApp = angular.module('rulesApp', ['ngResource', 'ngSanitize'])
+var rulesApp = angular.module('rulesApp', ['ngSanitize'])
+
 .directive('convertToNumber', function() {
   return {
     require: 'ngModel',
@@ -16,155 +17,13 @@ var rulesApp = angular.module('rulesApp', ['ngResource', 'ngSanitize'])
     }
   }
 });
-	 
-hostURL = function() {
-	return location.href.split('/').slice(0,-1).join('/')+'/rbREST/Domain/:domain/';
+	
+hostURL = function(domain) {
+	 if (!domain) { domain = ':domain'; }
+	return location.href.split('/').slice(0,-1).join('/')+'/rbREST/Domain/'+domain+'/';
 };
 
-$('#myTabs a').click(function (e) {
-	e.preventDefault();
-	$(this).tab('show')
-})
-   
-function showModalError(title, part1, part2, part3) {
-	alert(title+'\n\n'+part1);
-};
- 
-function resourceErrorHandler(response) {
-	showModalError('Error',
-					'Status returned : ' + response.status + ' (' + response.statusText + ')',
-					'REST call       : ' + response.config.url,
-					'Data            : ' + response.data);
-	console.log(response.data);
-};
- 
-function resourceSuccessHandler(response) {
-	if (typeof response.data.ErrorMessage != 'undefined') {
-		showModalError('Error',
-						'Status returned : ' + response.data.ErrorMessage,
-						'REST call       : ' + response.config.url,
-						'');
-		console.log(response.data);
-	}
-};
-
-function transformResponseHandler(data, header) {
-	try {
-		var jsonObject = JSON.parse(data);
-		return jsonObject;
-	} catch (e) {
-		if (typeof header.ErrorMessage != 'undefined') {
-			showModalError('Error',
-							'Status returned : ' + header.ErrorMessage,
-							'Received data in console.log (Ctrl Shift J in Chrome)', '');
-		} else {
-			showModalError('Error',
-							'Malformed JSON structure : ' + e,
-							'Received data in console.log (Ctrl Shift J in Chrome)',	'');
-		}
-		console.log(data);
-	}
-	return {};
-};
-
-
-rulesApp.factory('restEntities', function ($resource) {
-	return $resource(hostURL() + "Entities", {}, {
-		query: { method: "POST", isArray: false,
-					interceptor : {
-						responseError : resourceErrorHandler
-					},
-					transformResponse : transformResponseHandler
-		}
-	});
-});
-
-rulesApp.factory('restSentencesByEntity', function ($resource) {
-	return $resource(hostURL() + "Sentences/Entity/:entity", {}, {
-		query: { method: "GET", isArray: false,
-					interceptor : {
-						response : resourceSuccessHandler,
-						responseError : resourceErrorHandler
-					},
-					transformResponse : transformResponseHandler
-		}
-	});
-});
-
-rulesApp.factory('restDictionaries', function ($resource) {
-	return $resource(hostURL() + "Dictionaries", {}, {
-		query: { method: "GET", isArray: false,
-					interceptor : {
-						response : resourceSuccessHandler,
-						responseError : resourceErrorHandler
-					},
-					transformResponse : transformResponseHandler
-		},
-		update: { method: "POST", isArray: false,
-					interceptor : {
-						response : resourceSuccessHandler,
-						responseError : resourceErrorHandler
-					}
-		}
-	});
-});
-
-rulesApp.factory('restRuleDefs', function ($resource) {
-	return $resource(hostURL() + "RuleDefinitions", {}, {
-		query: { method: "GET", isArray: false,
-					interceptor : {
-						response : resourceSuccessHandler,
-						responseError : resourceErrorHandler
-					},
-					transformResponse : transformResponseHandler
-		},
-		update: { method: "POST", isArray: false,
-					interceptor : {
-						response : resourceSuccessHandler,
-						responseError : resourceErrorHandler
-					}
-		}
-	});
-});
-
-
-rulesApp.factory('restExtract', function ($resource) {
-	return $resource(hostURL() + "Extract/:ParID/:SourceID", {}, {
-		query : {method: 'GET', isArray: false,
-					interceptor : {
-						response : resourceSuccessHandler,
-						responseError : resourceErrorHandler
-					}
-		}
-	});
-});
-
-
-rulesApp.factory('restIndex', function ($resource) {
-	return $resource(hostURL() + "Index", {}, {
-		update : {method: 'POST',
-					interceptor : {
-						response : resourceSuccessHandler,
-						responseError : resourceErrorHandler
-					}
-		}
-	});
-});
-
-
-rulesApp.factory('restParse', function ($resource) {
-	return $resource(hostURL() + "Parse", {}, {
-		update : {method: 'POST',
-					interceptor : {
-						response : resourceSuccessHandler,
-						responseError : resourceErrorHandler
-					}
-		}
-	});
-});
-
-
-rulesApp.controller('DomainController', ['$scope', '$filter', '$resource', '$sce', 'restEntities', 'restSentencesByEntity', 'restRuleDefs', 'restExtract', 'restDictionaries', 'restParse', 'restIndex', 'restDictionaries', 'restBlacklists', function($scope, $filter, $resource, $sce, restEntities, restSentencesByEntity, restRuleDefs, restExtract, restDictionaries, restParse, restIndex, restDictionaries, restBlacklists) {
+rulesApp.controller('DomainController', ['$scope', '$filter', '$sce', function($scope, $filter, $sce) {
 	
 	// initialize ikDomain
 	function initDomain() {
@@ -179,9 +38,9 @@ rulesApp.controller('DomainController', ['$scope', '$filter', '$resource', '$sce
 	$scope.ikDomain = initDomain();
    	
 	$scope.getRuleDefs = function (string) {
-		var temp = restRuleDefs.query({domain:$scope.ikDomain}, function(data) {
-			$scope.ruleDefs = temp.RuleDefinitions;
-			delete temp;
+     	$.get(hostURL($scope.ikDomain)+'RuleDefinitions', function(data) {
+			$scope.ruleDefs = data.RuleDefinitions;
+			$scope.$apply();
 		});
 	}
 	
@@ -191,9 +50,15 @@ rulesApp.controller('DomainController', ['$scope', '$filter', '$resource', '$sce
 	}
 	$scope.dropRuleDef = function(rule) {
 		if (!confirm('Are you sure you want to delete rule "'+rule.Name+'"?')) return;
-		var temp = restRuleDefs.update({domain:$scope.ikDomain}, {'delete':true, 'obj':{'ID':rule.ID} }, function(data) {
-			$scope.getRuleDefs();
-		});
+		$.ajax({
+	  		url: hostURL($scope.ikDomain)+'RuleDefinitions',
+	  		method: 'POST',
+	  		contentType: 'application/json; charset=UTF-8',
+	  		data: JSON.stringify( { 'delete': true, 'obj': { 'ID': rule.ID } } ),
+  			success: function(data) {
+				$scope.getRuleDefs();
+       		}
+	  	});
 	}
 	$scope.createRuleDef = function() {
 		$scope.currentRuleDef = { 'ID':0, 'Name':'New rule', 'Elements':[] };
@@ -201,10 +66,16 @@ rulesApp.controller('DomainController', ['$scope', '$filter', '$resource', '$sce
 	}
 	$scope.updateRuleDef = function() {
 		//console.log($scope.currentRuleDef);
-		var temp = restRuleDefs.update({domain:$scope.ikDomain}, {'update':true, 'obj':$scope.currentRuleDef }, function(data) {
-			$scope.getRuleDefs();
-			$('#ruleDetails').modal('hide');
-		});
+		$.ajax({
+	  		url: hostURL($scope.ikDomain)+'RuleDefinitions',
+	  		method: 'POST',
+	  		contentType: 'application/json; charset=UTF-8',
+	  		data: JSON.stringify( {'update':true, 'obj':$scope.currentRuleDef } ),
+  			success: function(data) {
+	  			$scope.getRuleDefs();
+	  			$('#ruleDetails').modal('hide');
+       		}
+	  	});
 	}
 	$scope.addRuleElem = function() {
 		var elem = { 'Count': 0, 'Negation': 'N/A', 'Type':'dictionary', 'ItemURI':'ANY' };
@@ -230,32 +101,37 @@ rulesApp.controller('DomainController', ['$scope', '$filter', '$resource', '$sce
 		var obj = $scope.parsedText;
 		//obj.formatted = null;
 		obj.documentName = $scope.docName;
-		var temp = restIndex.update({domain:$scope.ikDomain}, {'doc':obj}, function(data) {
-			$scope.paragraphs = temp.paragraphs;
-			for (var i = 0; i < $scope.paragraphs.length; i++) {
-				$scope.paragraphs[i].done = false;
-				$scope.paragraphs[i].fullText = $sce.trustAsHtml(temp.paragraphs[i].fullText);
-				$scope.paragraphs[i].hasMatches = ($scope.paragraphs[i].matchCount > 0);
-				$scope.extract($scope.paragraphs[i]);
-			}
-			console.log($scope.paragraphs);
-			delete temp;
-			$('#tabi4h').parent().removeClass('disabled');
-			$('#tabi5h').parent().removeClass('disabled');
-		    $('#tabi4h').click();
-		});
+
+		$.ajax({
+	  		url: hostURL($scope.ikDomain)+'Index',
+	  		method: 'POST',
+	  		contentType: 'application/json; charset=UTF-8',
+	  		data: JSON.stringify( { doc: obj } ),
+  			success: function(data) {
+				$scope.paragraphs = data.paragraphs;
+				for (var i = 0; i < $scope.paragraphs.length; i++) {
+					$scope.paragraphs[i].done = false;
+					$scope.paragraphs[i].fullText = $sce.trustAsHtml(data.paragraphs[i].fullText);
+					$scope.paragraphs[i].hasMatches = ($scope.paragraphs[i].matchCount > 0);
+					$scope.extract($scope.paragraphs[i]);
+				}
+				//console.log($scope.paragraphs);
+				$('#tabi4h').parent().removeClass('disabled');
+				$('#tabi5h').parent().removeClass('disabled');
+			    $('#tabi4h').click();
+       		}
+	  	});
 	}
 	
 	$scope.extract = function(par) {
-		var temp = restExtract.query({domain:$scope.ikDomain, ParID:par.paragraphId, SourceID:par.sourceId}, function(data) {
-			console.log(temp);
-			par.rules = temp.ExtractionResults;
+     	$.get(hostURL($scope.ikDomain)+'Extract/'+par.paragraphId+'/'+par.sourceId, function(data) {
+			par.rules = data.ExtractionResults;
 			par.hasRules = (par.rules.length > 0);
 			if (par.hasRules) { 
 				par.fullText = $sce.trustAsHtml(par.rules[0].HighlightingResult);
+				$scope.$apply();
 			}
 			$('.ruleDefDetail').popover();
-			delete temp;
 		});
 	}
 	
@@ -263,13 +139,20 @@ rulesApp.controller('DomainController', ['$scope', '$filter', '$resource', '$sce
 		$scope.parsedText = null;
 		$scope.paragraphs = [];
 		$scope.matchedParagraphs = null;
-		var temp = restParse.update({domain:$scope.ikDomain}, {'Text':text}, function(data) {
-			$scope.parsedText = temp;
-			$scope.parsedText.formatted = $scope.generateHTMLForChildren(temp);
-			delete temp;
-			$('#tabi3h').parent().removeClass('disabled');
-		    $('#tabi3h').click();
-		});
+
+		$.ajax({
+	  		url: hostURL($scope.ikDomain)+'Parse',
+	  		method: 'POST',
+	  		contentType: 'application/json; charset=UTF-8',
+	  		data: JSON.stringify( { Text : text } ),
+  			success: function(data) {
+	  			$scope.parsedText = data;
+				$scope.parsedText.formatted = $scope.generateHTMLForChildren(data);
+				$scope.$apply();
+				$('#tabi3h').parent().removeClass('disabled');
+			    $('#tabi3h').click();
+       		}
+	  	});
 	}
 	$scope.generateHTMLForChildren = function(doc) {
 		if (!doc.children) return '';
@@ -280,13 +163,6 @@ rulesApp.controller('DomainController', ['$scope', '$filter', '$resource', '$sce
 		}
 		html += '</table>';
 		return html;
-	}
-	
-	$scope.getExtractionResults = function() {
-		temp = restRuleExtracts.query({domain:$scope.ikDomain, SessionId:0}, function(data) {
-			$scope.extractedRules = temp.ExtractionResults;
-			delete temp;
-		});
 	}
 	
 	$scope.toggleValidExtractsOnly = function() {
@@ -456,10 +332,16 @@ rulesApp.controller('DomainController', ['$scope', '$filter', '$resource', '$sce
 	}
 	
 	$scope.selectEntity = function (entity) {
-		var temp = restSentencesByEntity.query({domain:$scope.ikDomain, entity:entity.EntityValue}, function(data) {
-			$scope.sentences = temp.Sentences;
-			delete temp;
-		});
+		$.ajax({
+	  		url: hostURL($scope.ikDomain)+'Sentences/Entity',
+	  		method: 'POST',
+	  		contentType: 'application/json; charset=UTF-8',
+	  		data: JSON.stringify( { entity:entity, 'test':'ok' } ),
+  			success: function(data) {
+				$scope.sentences = data.Sentences;
+				$scope.$apply();
+       		}
+	  	});
 	}
 	
 	$scope.getDictItems = function(dname) {
@@ -478,22 +360,19 @@ rulesApp.controller('DomainController', ['$scope', '$filter', '$resource', '$sce
 //		var dictApp = angular.module('dictApp' ...
 //		hostURL = function() { ...
 // 		function initDomain() { ...
-//		function resourceErrorHandler(response) { ...
-//		function transformResponseHandler(data, header) { ...
-//		dictApp.factory('restEntities' ...
-//		dictApp.factory('restSentencesByEntity' ...
 //  3: remove controller definition "opener", so we just add onto the existing one started above
 //  4: search-and-replace dictApp >> rulesApp
 //	5: set $scope.getMatches = false;
 
+	
 	$scope.getBlacklists = function() {
-		var tempbl = restBlacklists.query({domain:$scope.ikDomain}, function(data) {
-			if (!tempbl.blacklists || (tempbl.blacklists.length==0)) {
+     	$.get(hostURL($scope.ikDomain)+'Blacklists', function(data) {
+			if ((data.blacklists==undefined) || (data.blacklists.length==0)) {
 				$scope.blacklists = [{ name:'Default blacklist', entries:[]}];
 			} else {
-				$scope.blacklists = tempbl.blacklists;
+				$scope.blacklists = data.blacklists;
 			}
-			delete tempbl;
+			$scope.$apply();
 		});
 	}
 	$scope.blacklists = [];
@@ -523,12 +402,18 @@ rulesApp.controller('DomainController', ['$scope', '$filter', '$resource', '$sce
 	$scope.getMatches = false;
 	$scope.getEntities = function (string, overrideGetMatches) {
 		var bl = ($scope.blacklists.length > $scope.currentBlacklist) ? [$scope.blacklists[$scope.currentBlacklist].id] : [];
-		var temp = restEntities.query({domain:$scope.ikDomain}, {entity:string, blacklists:bl, getMatches:$scope.getMatches || overrideGetMatches}, function(data) {
-			$scope.entities = temp.Entities;
-			delete temp;
-		});
+	  	$.ajax({
+	  		url: hostURL($scope.ikDomain)+'Entities',
+	  		method: 'POST',
+	  		contentType: 'application/json; charset=UTF-8',
+	  		data: JSON.stringify( {entity:string, blacklists:bl, getMatches:$scope.getMatches || overrideGetMatches} ),
+  			success: function(data) {
+				$scope.entities = data.Entities;
+				$scope.$apply();
+       		}
+	  	});
 	};
-	$scope.getEntities();
+	$scope.getEntities("");
 	
 	$scope.typeEntity = function(event, overrideGetMatches) {
 		if (event && ((event.keyCode==13) || (event.which==13))) {
@@ -538,9 +423,10 @@ rulesApp.controller('DomainController', ['$scope', '$filter', '$resource', '$sce
 	
 	
 	$scope.getDictionaries = function() {
-		temp = restDictionaries.query({domain:$scope.ikDomain}, function(data) {
-			$scope.dictionaries = temp.dictionaries;
-			delete temp;
+     	$.get(hostURL($scope.ikDomain)+'Dictionaries', function(data) {
+	     	$scope.dictionaries = data.dictionaries;
+			if (!$scope.dictionaries) $scope.dictionaries = [];
+			$scope.$apply();
 		});
 	}
 	$scope.getDictionaries();
@@ -575,6 +461,7 @@ rulesApp.controller('DomainController', ['$scope', '$filter', '$resource', '$sce
 	$scope.updateMatchScores = function(term) {
 		for (e in $scope.entities) {
 			var ent = $scope.entities[e];
+			if (!ent.Matches) ent.Matches = [];
 			if (ent.EntityValue == term) {
 				ent.Matches.push({Dict:$scope.currentDictionary, Score:1});
 				ent.HighestScore = 1;
@@ -636,12 +523,17 @@ rulesApp.controller('DomainController', ['$scope', '$filter', '$resource', '$sce
 	
 	
 	$scope.saveAll = function() {
-		var temp = restDictionaries.update({domain:$scope.ikDomain}, {'dictionaries':$scope.dictionaries, 'blacklists':$scope.blacklists}, function(data) {
-			// TODO: catch errors?
-			$scope.getDictionaries();
-			$scope.getBlacklists();
-			$scope.getEntities($scope.term);
-		});
+	  $.ajax({
+	  		url: hostURL($scope.ikDomain)+'Dictionaries',
+	  		method: 'POST',
+	  		contentType: 'application/json; charset=UTF-8',
+	  		data: JSON.stringify( {'dictionaries':$scope.dictionaries, 'blacklists':$scope.blacklists} ),
+  			success: function(data) {
+				$scope.getDictionaries();
+				$scope.getBlacklists();
+				$scope.getEntities($scope.term);
+       		}
+	  });
 	}
 	
 	$scope.filterEntities = function(prop){
@@ -652,35 +544,8 @@ rulesApp.controller('DomainController', ['$scope', '$filter', '$resource', '$sce
 	}
 	$scope.entFilter = 2;
 }]);
-	 
- 
 
-rulesApp.factory('restDictionaries', function ($resource) {
-	return $resource(hostURL() + "Dictionaries", {}, {
-		query: { method: "GET", isArray: false,
-					interceptor : {
-						responseError : resourceErrorHandler
-					},
-					transformResponse : transformResponseHandler
-		},
-		update: { method: "POST", isArray: false,
-					interceptor : {
-						responseError : resourceErrorHandler
-					}
-		}
-	});
-});
 
-rulesApp.factory('restBlacklists', function ($resource) {
-	return $resource(hostURL() + "Blacklists", {}, {
-		query: { method: "GET", isArray: false,
-					interceptor : {
-						responseError : resourceErrorHandler
-					},
-					transformResponse : transformResponseHandler
-		}
-	});
-});
 
 var _isc_drag_scroll = false;
 rulesApp.directive('iscDraggable', function($document) {
@@ -799,6 +664,5 @@ rulesApp.directive('iscDroppable', function() {
 			);
         }
     }
-});
-]]></CSP>
+});]]></CSP>
 </Export>

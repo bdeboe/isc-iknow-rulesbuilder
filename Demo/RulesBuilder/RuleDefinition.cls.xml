@@ -163,8 +163,8 @@ and therefore having a high chance of matching it.</Description>
 			set tDictId = $lg(tData,2), tItemId = $lg(tData,3), tMatchId = $lg(tData,1)
 			set tScore = $lg(tData,8)
 			
-			set tMatches("dictionary", tDictId, -tScore, tMatchId) = tData
-			set tMatches("item", tItemId, -tScore, tMatchId) = tData
+			set tMatches("dictionary", -tScore, tDictId, tMatchId) = tData
+			set tMatches("item", -tScore, tItemId, tMatchId) = tData
 		}
 		
 
@@ -196,12 +196,12 @@ and therefore having a high chance of matching it.</Description>
 			kill tItemsFound
 			set tSort="", tIsBestMatch=1, tLowestEntOccIdForMatch = -1, tIsMatched=0
 			for {
-				set tSort = $order(tMatches(tElement.Type, tTypeId, tSort))
+				set tSort = $order(tMatches(tElement.Type, tSort))
 				quit:tSort=""
 				
 				set tMatchId=""
 				for {
-					set tMatchId = $order(tMatches(tElement.Type, tTypeId, tSort, tMatchId),1,tData)
+					set tMatchId = $order(tMatches(tElement.Type, tSort, tTypeId, tMatchId),1,tData)
 					quit:tMatchId=""
 					
 					set tItemId = $lg(tData,3)
@@ -254,7 +254,7 @@ and therefore having a high chance of matching it.</Description>
 				}
 				quit:$$$ISERR(tSC)
 				
-				set:tElement.Type="item" tIsBestMatch = 0
+				set:$d(tMatches(tElement.Type, tSort, tTypeId)) tIsBestMatch = 0
 			}
 			quit:$$$ISERR(tSC)
 			
