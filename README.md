@@ -4,6 +4,8 @@ This demo application can be used to demonstrate how you can leverage classic iK
 
 The application also includes code to "parse" the paragraph structure of texts with various numbering patterns, which might be usable for other scenarios, independent of the rules building functionalities. The paragraph numbering detection allows for several typical OCR issues ("_11._" rather than "_ii._"). See the code in Demo.RulesBuilder.Paragraph:ParseString() for more details.
 
+For a detailed description of the GUI, check this article on the InterSystems Developer Community: https://community.intersystems.com/post/iknow-demo-apps-part-4-rules-builder-demo
+
 
 ### Installation notes
 * Import associated code
@@ -16,5 +18,4 @@ The application also includes code to "parse" the paragraph structure of texts w
 
 
 ### TODO
-* possibly source nicer dictionary building infrastructure from https://github.com/bdeboe/isc-iknow-dictbuilder
 * possibly let the dictionary GUI manage the dictionary elements straight in the domain definition XML, to simplify exporting and avoid confusion of what's defined in the domain and what's just in the XML
