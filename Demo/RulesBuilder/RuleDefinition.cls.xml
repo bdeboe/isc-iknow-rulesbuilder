@@ -129,15 +129,11 @@ and therefore having a high chance of matching it.</Description>
 	set tSC = $$$OK
 	try {
 		set vSrcId = $s(pSrcId<0:$zabs(pSrcId), 1:0)
-		if (vSrcId&&pSentId) {
-			set tSC = $$$ERROR($$$GeneralError, "Not supported")
-			quit
-		}
 		
 		set tColors = $lb("Grey", "Tomato", "PaleGreen", "LightBlue", "Yellow", "HotPink", "Plum", "SandyBrown")
 		
 		set tTotalScore = 0
-		set tDocName = ##class(Demo.RulesBuilder.ParagraphDomain).GetDocumentName(pSrcId)
+		set tDocName = ##class(Demo.RulesBuilder.Utils).GetDocumentName(..DomainId, pSrcId)
 		set tExtractResult = ##class(ExtractionResult).%New()
 		set tExtractResult.DomainId = ..DomainId
 		set tExtractResult.DocumentName = tDocName
@@ -149,7 +145,7 @@ and therefore having a high chance of matching it.</Description>
 		
 		// prepare matches
 		kill tMatches
-		if pSentId {
+		if pSentId && 'vSrcId {
 			set tSC = ##class(%iKnow.Matching.MatchingAPI).GetMatchesBySentence(.tResult, ..DomainId, pSentId,, 0, 0)
 			quit:$$$ISERR(tSC)
 		} else {
@@ -162,6 +158,9 @@ and therefore having a high chance of matching it.</Description>
 			quit:i=""
 			set tDictId = $lg(tData,2), tItemId = $lg(tData,3), tMatchId = $lg(tData,1)
 			set tScore = $lg(tData,8)
+			
+			// manual pruning as GetMatchBySentence() didn't cover virtual sources
+			continue:vSrcId&&pSentId&&(pSentId'=$$GetSentId(tData))
 			
 			set tMatches("dictionary", -tScore, tDictId, tMatchId) = tData
 			set tMatches("item", -tScore, tItemId, tMatchId) = tData
@@ -222,7 +221,7 @@ and therefore having a high chance of matching it.</Description>
 					// if we're looking at the source level, keep track of the number of sentences
 					// we're spanning
 					if 'pSentId {
-						set tSentId = ##class(%iKnow.Matching.MatchingAPI).GetSentenceIdForMatchTarget(..DomainId, $lg(tData,6), $lg(tData,7))
+						set tSentId = $$GetSentId(tData)
 						if '$d(tSentencesSpanned(tSentId)) { set tSentencesSpanned(tSentId) = $i(tSentencesSpanned) }
 					}
 					
@@ -296,7 +295,11 @@ and therefore having a high chance of matching it.</Description>
 		//set tMarkup("ROLE", $$$ENTTYPECONCEPT) = "<b>"
 		//set tMarkup("ROLE", $$$ENTTYPERELATION) = "<u>"
 		//set tMarkup("ROLE", $$$ENTTYPENONREL) = "<font style='color: #555555;'>"
-		set:pParagraphId tExtractResult.HighlightingResult = ##class(Paragraph).%OpenId(pParagraphId).FormatText(..DomainId, .tMarkup, -1)
+		if pParagraphId {
+			set tExtractResult.HighlightingResult = ##class(Paragraph).%OpenId(pParagraphId).FormatText(..DomainId, .tMarkup, -1)
+		} elseif pSentId {
+			set tExtractResult.HighlightingResult = ##class(%iKnow.Queries.SentenceAPI).GetHighlighted(..DomainId, pSentId, .tMarkup, vSrcId)
+		}
 		set tSC = tExtractResult.%Save()
 		quit:$$$ISERR(tSC)
 		
@@ -317,6 +320,24 @@ and therefore having a high chance of matching it.</Description>
 		set tSC = ex.AsStatus()
 	}
 	quit tSC
+	
+GetSentId(tData) 
+
+	if (pSrcId > 0) {
+		quit ##class(%iKnow.Matching.MatchingAPI).GetSentenceIdForMatchTarget(..DomainId, $lg(tData,6), $lg(tData,7))
+	} else {
+		// helper method doesn't support virtual sources yet!
+		if ($lg(tData,6) = $$$DMTARGETENTITY) {
+			quit ##class(%iKnow.Objects.VirtualEntityOccurrence).PKINDEXOpen(..DomainId, $zabs(pSrcId), $lg(tData,7)).SentenceId
+		} elseif ($lg(tData,6) = $$$DMTARGETCRC) {
+			quit ##class(%iKnow.Objects.VirtualCrcOccurrence).PKINDEXOpen(..DomainId, $zabs(pSrcId), $lg(tData,7)).SentenceId
+		} elseif ($lg(tData,6) = $$$DMTARGETPATH) {
+			set x = $order(^ISC.IKV.PathToSent(..DomainId, $zabs(pSrcId), $lg(tData,7)),-1,tSentBatch)
+			quit $lg(tSentBatch,1)
+		} elseif ($lg(tData,6) = $$$DMTARGETSENT) {
+			quit $lg(tData,7)
+		}
+	}
 ]]></Implementation>
 </Method>
 

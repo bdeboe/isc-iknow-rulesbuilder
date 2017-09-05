@@ -409,7 +409,7 @@ isc-droppable="selectItem(item, data)" ng-click="selectItem(item);"><span class=
      	            
                     <div class="tab-pane fade in active" id="tabi2">
                       <div class="row">
-                        <div class="col-md-8">
+                        <div class="col-md-4">
                           <div class="form-group">
                             <label for="txtDocName">Document name</label>
                             <input class="form-control" label="Document name" ng-model="docName" />
@@ -431,10 +431,26 @@ isc-droppable="selectItem(item, data)" ng-click="selectItem(item);"><span class=
      	                    </button>
      	                  </div>
                         </div>
+                        <div class="col-md-2">
+                          <div class="form-group">
+                            <label for="selDocID">Existing source</label>
+                            <select class="form-control" ng-model="docID" ng-change="getSourceText()" >
+                              <option ng-repeat="s in sources" value="{{s.sourceId}}">{{s.externalId}}</option>
+                            </select>
+                          </div>
+                        </div>
+                        <div class="col-md-2">
+                          <div class="form-group">
+     	                    <label>&nbsp;</label>
+     	                    <button class="btn btn-success form-control" ng-click="index(freeText);">Use sentences
+     	                      <span class="glyphicon glyphicon-chevron-right" aria-hidden="true"></span>
+     	                    </button>
+     	                  </div>
+                        </div>
                       </div>
                       <div class="row">
                         <div class="col-md-12">
-     	                  <textarea rows="17" class="form-control" placeholder="Text input" 
+     	                  <textarea rows="17" class="form-control" placeholder="Text input" ng-change="docID = 0;"
      	                	ng-model="freeText" style="margin-bottom:10px;" ></textarea>
      	                </div>
      	              </div>
@@ -534,10 +550,12 @@ isc-droppable="selectItem(item, data)" ng-click="selectItem(item);"><span class=
      	            
      	            <div class="tab-pane fade" id="tabi5">
      	              <table class="table table-hover">
-     	                <tr><th>Location</th><th>Rule</th><th class="text-right"><span class="glyphicon glyphicon-download" ng-click="downloadRules()"></span></th></tr>
+     	                <tr><th>Location</th><th>Rule</th><th>Text</th><th>Score</th><th class="text-right"><span class="glyphicon glyphicon-download" ng-click="downloadRules()"></span></th></tr>
      	                <tr ng-repeat="r in savedRules">
      	                  <td>{{r.paragraph.fullKey}}</td>
+     	                  <td>{{r.ruleDef}}</td>
      	                  <td>{{r.rule}}</td>
+     	                  <td>{{r.extract.Score}}</td>
      	                  <td class="text-right" style="width: 50px">
      	                    <glyphicon class="glyphicon glyphicon-pencil" ng-click="editRule(r)"></span>
      	                    <glyphicon class="glyphicon glyphicon-remove" ng-click="dropRule($index)"></span>
@@ -557,14 +575,14 @@ isc-droppable="selectItem(item, data)" ng-click="selectItem(item);"><span class=
 		    <div class="modal-content">
 		      <div class="modal-header">
 		        <span class="glyphicon glyphicon-remove close" data-dismiss="modal"> </span>
-		        <h4 class="modal-title">Save rule</h4>
+		        <h4 class="modal-title">Save rule "<strong>{{newRule.ruleDef}}</strong>"</h4>
 		      </div>
 		      <div class="modal-body">
 		        <div class="well" ng-bind-html="newRule.paragraph.fullText">
 		        </div>
 		        <form>
 		          <div class="form-group">
-		            <label for="txtSaveRule">Rule
+		            <label for="txtSaveRule">Rule from text
                       <div class="btn-group btn-group-xs" role="group">
                         <button type="button" class="btn disabled">order: </button>
                         <button type="button" class="btn" ng-class="{'btn-primary': elemOrder=='+FirstEntOccId', 'btn-default': elemOrder=='+RuleElementSeq'}" ng-click="elemOrder='+FirstEntOccId'; updateRuleString();" >original</button>

@@ -36,6 +36,7 @@ rulesApp.controller('DomainController', ['$scope', '$filter', '$sce', function($
 		return 0;
 	}
 	$scope.ikDomain = initDomain();
+	$scope.mode = 'paragraph';
    	
 	$scope.getRuleDefs = function (string) {
      	$.get(hostURL($scope.ikDomain)+'RuleDefinitions', function(data) {
@@ -94,20 +95,28 @@ rulesApp.controller('DomainController', ['$scope', '$filter', '$sce', function($
 		$scope.currentRuleExtractHTML = $sce.trustAsHtml(extract.HighlightingResult);
 	}
 	
-	$scope.index = function () {
+	$scope.index = function (text) {
 		$scope.paragraphs = [];
 		$scope.currentRuleExtract = null;
 		$scope.currentRuleExtractHTML = '';
-		var obj = $scope.parsedText;
-		//obj.formatted = null;
-		obj.documentName = $scope.docName;
+		
+		if (text == null) {
+			var request = { doc: $scope.parsedText };
+			request.doc.documentName = $scope.docName;
+		} else if ($scope.docID > 0) {
+			var request = { src: $scope.docID, doc: { documentName : $scope.docName } };
+		} else {
+			var request = { txt: text, doc: { documentName : $scope.docName } };
+		}
+		//console.log(request);
 
 		$.ajax({
 	  		url: hostURL($scope.ikDomain)+'Index',
 	  		method: 'POST',
 	  		contentType: 'application/json; charset=UTF-8',
-	  		data: JSON.stringify( { doc: obj } ),
+	  		data: JSON.stringify( request ),
   			success: function(data) {
+	  			console.log(data);
 				$scope.paragraphs = data.paragraphs;
 				for (var i = 0; i < $scope.paragraphs.length; i++) {
 					$scope.paragraphs[i].done = false;
@@ -115,7 +124,6 @@ rulesApp.controller('DomainController', ['$scope', '$filter', '$sce', function($
 					$scope.paragraphs[i].hasMatches = ($scope.paragraphs[i].matchCount > 0);
 					$scope.extract($scope.paragraphs[i]);
 				}
-				//console.log($scope.paragraphs);
 				$('#tabi4h').parent().removeClass('disabled');
 				$('#tabi5h').parent().removeClass('disabled');
 			    $('#tabi4h').click();
@@ -223,10 +231,13 @@ rulesApp.controller('DomainController', ['$scope', '$filter', '$sce', function($
 	$scope.createRule = function(par, rule) {
 		$scope.newRule = { 'paragraph': par, 'documentName': par.documentName };
 		if (rule != null) {
+			$scope.newRule.ruleDef = rule.RuleDefinition.Name;
 			$scope.newRule.extract = rule;
+			$scope.newRule.paragraph.plainText = par.fullText;
 			$scope.newRule.paragraph.fullText = $sce.trustAsHtml(rule.HighlightingResult);
 			$scope.updateRuleString(rule);
 		}
+		//console.log(par, rule);
 		$('#saveModal').modal('show');
 	}
 	
@@ -313,10 +324,10 @@ rulesApp.controller('DomainController', ['$scope', '$filter', '$sce', function($
 	
 	$scope.downloadRules = function() {
 		
-		var data = 'paragraph;rule;score';
+		var data = 'location;rule name;extract;full text;score';
 		for (var i in $scope.savedRules) {
 			var r = $scope.savedRules[i];
-			data += '\n'+r.paragraph.fullKey+';'+r.rule+';'+(r.extract ? r.extract.Score : '');
+			data += '\n'+r.paragraph.fullKey+';'+r.ruleDef+';'+r.rule+';'+r.paragraph.fullText+';'+(r.extract ? r.extract.Score : '');
 		}
 		
 	    var uri = 'data:text/csv;charset=utf-8,' + escape(data);
@@ -421,6 +432,21 @@ rulesApp.controller('DomainController', ['$scope', '$filter', '$sce', function($
 		}
 	}
 	
+	
+	$scope.getSources = function() {
+     	$.get(hostURL($scope.ikDomain)+'Sources', function(data) {
+	     	$scope.sources = data.sources;
+		});
+	}
+	$scope.getSources();
+	$scope.getSourceText = function() {
+		if ($scope.docID) {
+			$.get(hostURL($scope.ikDomain)+'Sources/'+$scope.docID, function(data) {
+				$scope.freeText = data.text;
+				$scope.$apply();
+			});
+		}
+	}
 	
 	$scope.getDictionaries = function() {
      	$.get(hostURL($scope.ikDomain)+'Dictionaries', function(data) {
@@ -532,6 +558,7 @@ rulesApp.controller('DomainController', ['$scope', '$filter', '$sce', function($
 				$scope.getDictionaries();
 				$scope.getBlacklists();
 				$scope.getEntities($scope.term);
+				alert("Dictionaries saved succesfully");
        		}
 	  });
 	}

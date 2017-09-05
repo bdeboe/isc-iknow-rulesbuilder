@@ -1,6 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Export generator="Cache" version="25">
 <Class name="Demo.RulesBuilder.RestHandler">
+<Description>
+NOTE: this class was built to support versions prior to 2016.2 and therefore does
+not yet take advantage of the JSON features or iKnow REST API added since.</Description>
 <IncludeCode>%IKPublic</IncludeCode>
 <IncludeGenerator>%IKPublic</IncludeGenerator>
 <Super>%CSP.REST</Super>
@@ -53,23 +56,35 @@ the classic $$$FILTERALLANDSORT</Description>
 <Route Url="/Domain/:domain/Extract/:parID/:srcId" Method="GET" Call="ExtractParagraph"/>
 
 <Route Url="/Domain/:domain/Parse" Method="POST" Call="Parse"/>
+
+<Route Url="/Domain/:domain/Sources" Method="GET" Call="GetSources" />
+<Route Url="/Domain/:domain/Sources/:srcId" Method="GET" Call="GetSourceText" />
+
 </Routes>
 ]]></Data>
 </XData>
 
 <Method name="GetExtractionResults">
+<Description>
+Retrieve all Demo.RulesBuilder.ExtractionResult entries for a given source, optionally
+limited to those of a designated sentence.</Description>
 <ClassMethod>1</ClassMethod>
-<FormalSpec>pDomainId:%Integer,pSourceId:%Integer</FormalSpec>
+<FormalSpec>pDomainId:%Integer,pSourceId:%Integer,pSentId:%Integer=0</FormalSpec>
 <ReturnType>%Status</ReturnType>
 <Implementation><![CDATA[
 	set tSC = $$$OK
 	try {
 		set tJSON = ##class(%ZEN.proxyObject).%New()
 		set tJSON.ExtractionResults = ##class(%ListOfObjects).%New()
-		set tSourceObj = ##class(%iKnow.Objects.Source).PKINDEXOpen(pDomainId, pSourceId)
+		
+		if (pSourceId > 0) {
+			set tSourceObj = ##class(%iKnow.Objects.Source).PKINDEXOpen(pDomainId, pSourceId)
+		} else {
+			set tSourceObj = ##class(%iKnow.Objects.VirtualSource).PKINDEXOpen(pDomainId, $zabs(pSourceId))
+		}
 		
 		set tStatement = ##class(%SQL.Statement).%New()
-		set tSC = tStatement.%Prepare("SELECT ID FROM Demo_RulesBuilder.ExtractionResult WHERE DomainId = ? AND SourceId = ? AND Score > 0 ORDER BY Score DESC")
+		set tSC = tStatement.%Prepare("SELECT ID FROM Demo_RulesBuilder.ExtractionResult WHERE DomainId = ? AND SourceId = ? AND Score > 0"_$s(pSentId:" AND SentenceId = "_pSentId, 1:"")_" ORDER BY Score DESC")
 		quit:$$$ISERR(tSC)
 		set tResult = tStatement.%Execute(pDomainId, pSourceId)
 		while tResult.%Next() {
@@ -142,12 +157,21 @@ the classic $$$FILTERALLANDSORT</Description>
 </Method>
 
 <Method name="ExtractParagraph">
+<Description><![CDATA[
+Match supplied element (paragraph / sentence) against all Demo.RulesBuilder.RuleDefinition entries
+If pPargraphID > 0, proceed extracting from Demo.RulesBuilder.Paragraph entry
+If pPragraphID < 0, use as sentence ID and proceed with that sentence only ]]></Description>
 <ClassMethod>1</ClassMethod>
 <FormalSpec>pDomainId:%Integer,pParagraphID:%Integer,pSourceId:%Integer</FormalSpec>
 <ReturnType>%Status</ReturnType>
 <Implementation><![CDATA[
 	set tSC = $$$OK
 	try {
+		if pParagraphID < 0 {
+			set tSentId = $zabs(pParagraphID), pParagraphID = 0
+		} else {
+			set tSentId = 0
+		}
 		
 		&SQL(DELETE FROM Demo_RulesBuilder.ExtractionResult WHERE DomainId = :pDomainId AND SourceId = :pSourceId)
 		set tStatement = ##class(%SQL.Statement).%New()
@@ -155,22 +179,27 @@ the classic $$$FILTERALLANDSORT</Description>
 		quit:$$$ISERR(tSC)
 		set tResult = tStatement.%Execute(pDomainId) 
 		while tResult.%Next() {
-			set tSC = ##class(RuleDefinition).%OpenId(tResult.%Get("ID")).CheckMatches(pSourceId, pParagraphID)
+			set tSC = ##class(RuleDefinition).%OpenId(tResult.%Get("ID")).CheckMatches(pSourceId, pParagraphID, tSentId)
 			quit:$$$ISERR(tSC)
 		}
 		quit:$$$ISERR(tSC)
 		
-		set tSC = ..GetExtractionResults(pDomainId, pSourceId)
+		set tSC = ..GetExtractionResults(pDomainId, pSourceId, tSentId)
 		quit:$$$ISERR(tSC)
 		
 	} catch (ex) {
 		set tSC = ex.AsStatus()
 	}
-	quit tSC
+	quit ..ErrorHandler(tSC)
 ]]></Implementation>
 </Method>
 
 <Method name="Index">
+<Description><![CDATA[
+Input: either of
+  { txt : ... }   >> index text and proceed per sentence
+  { src : 123 }   >> use source and proceed per sentence
+  { obj : { ... } }  >> leverage supplied paragraph structure]]></Description>
 <ClassMethod>1</ClassMethod>
 <FormalSpec>pDomainId:%Integer</FormalSpec>
 <ReturnType>%Status</ReturnType>
@@ -184,42 +213,84 @@ the classic $$$FILTERALLANDSORT</Description>
 		set tSC = ##class(%ZEN.Auxiliary.jsonProvider).%ConvertJSONToObject(tJSONString,,.tJSON)
 		quit:$$$ISERR(tSC)
 		
-		
 		set tDomainName = $system.iKnow.GetDomainName(pDomainId)
 		set tDocName = tJSON.doc.documentName
 		
 		// first clean up old records and persist paragraphs
 		&SQL(DELETE FROM Demo_RulesBuilder.Paragraph WHERE DocumentName = :tDocName)
 		&SQL(DELETE FROM Demo_RulesBuilder.ExtractionResult WHERE DomainId = :pDomainId AND DocumentName = :tDocName)
-		set tSC = ##class(Demo.RulesBuilder.Paragraph).SaveFromProxy(tJSON.doc)
-		quit:$$$ISERR(tSC)
-
-		// now update domain
-		set tSC = ##class(Demo.RulesBuilder.ParagraphDomain).LoadDocument(tDocName)
-		quit:$$$ISERR(tSC)
+		
 		
 		set tResult = ##class(%ZEN.proxyObject).%New()
 		set tResult.paragraphs = ##class(%ListOfObjects).%New()
-		set tFilter = ##class(%iKnow.Filters.SimpleMetadataFilter).%New(pDomainId,"DocumentName","=",tDocName)
-		set tSC = ##class(%iKnow.Queries.SourceAPI).GetByDomain(.tSources, pDomainId, 0, 0, tFilter)
-		quit:$$$ISERR(tSC)
 		set tMarkup("MATCH")="<b>"
 		set tMarkup("ATTRIBUTE",$$$IKATTNEGATION) = "<font style='color: DarkRed;'>"
-		set i = ""
-		for {
-			set i = $order(tSources(i),1,tSrcData)
-			quit:i=""
-			set tPar = ##class(Paragraph).%OpenId($piece($lg(tSrcData,2),":",*)).ToProxy(pDomainId,.tMarkup,-1)
-			set tPar.sourceId = $lg(tSrcData,1)
-			
-			// add flag for *any* match
-			set tSC = ##class(%iKnow.Matching.MatchingAPI).GetMatchesBySourceId(.tMatches, pDomainId, tPar.sourceId,, 0)
+		
+		if (tJSON.txt '= "") {
+			set tSC = $system.iKnow.IndexString(tDomainName, 123, tJSON.txt,,1, .tSrcId)
 			quit:$$$ISERR(tSC)
-			set tPar.matchCount = $o(tMatches(""),-1)
-			
-			do tResult.paragraphs.Insert(tPar)
+			set tJSON.src = tSrcId
 		}
-		quit:$$$ISERR(tSC)
+		
+		if (tJSON.src '= "") {
+			
+			// when starting from an existing source, treat sentences as paragraphs
+			set vSrcID = $s(tJSON.src<0:$zabs(tJSON.src), 1:0)
+			set tSC = ##class(%iKnow.Queries.SentenceAPI).GetBySource(.tSentences, pDomainId, tJSON.src, 0, 0)
+			quit:$$$ISERR(tSC)
+			
+			set i = ""
+			for {
+				set i = $order(tSentences(i), 1, tSentData)
+				quit:i=""
+				
+				set tSentId = $lg(tSentData,1)
+				set tPar = ##class(%ZEN.proxyObject).%New()
+				set tPar.documentName = tDocName
+				set tPar.paragraphId = -tSentId
+				set tPar.startPos = tSentId
+				set tPar.key = tSentId
+				set tPar.fullKey = tSentId
+				set tPar.fullText = ##class(%iKnow.Queries.SentenceAPI).GetHighlighted(pDomainId, tSentId, .tMarkup, vSrcID)
+				set tPar.sourceId = tJSON.src
+				
+				// add flag for *any* match
+				if (vSrcID) {
+					// not supported
+				} else {
+					set tSC = ##class(%iKnow.Matching.MatchingAPI).GetMatchesBySentence(.tMatches, pDomainId, tSentId,, 0)
+					quit:$$$ISERR(tSC)
+					set tPar.matchCount = +$o(tMatches(""),-1)
+				}
+
+				do tResult.paragraphs.Insert(tPar)
+			}
+			quit:$$$ISERR(tSC)
+			
+		} else {
+			set tSC = ##class(Demo.RulesBuilder.Paragraph).SaveFromProxy(tJSON.doc)
+			quit:$$$ISERR(tSC)
+
+			// now update domain
+			set tSC = ##class(Demo.RulesBuilder.Utils).LoadDocument(tDocName, pDomainId, .vSrcIDs)
+			quit:$$$ISERR(tSC)
+
+			set vSrcID = ""
+			for {
+				set vSrcID = $order(vSrcIDs(vSrcID),1,tParID)
+				quit:vSrcID=""
+				set tPar = ##class(Paragraph).%OpenId(tParID).ToProxy(pDomainId,.tMarkup,-1)
+				set tPar.sourceId = vSrcID
+				
+				// add flag for *any* match
+				set tSC = ##class(%iKnow.Matching.MatchingAPI).GetMatchesBySourceId(.tMatches, pDomainId, tPar.sourceId,, 0)
+				quit:$$$ISERR(tSC)
+				set tPar.matchCount = +$o(tMatches(""),-1)
+				
+				do tResult.paragraphs.Insert(tPar)
+			}
+			quit:$$$ISERR(tSC)
+		}
 		
 		set:$data(%response) %response.ContentType="application/json"
 		do tResult.%ToJSON(,..#JSONFORMATPARAMS)
@@ -372,24 +443,6 @@ the classic $$$FILTERALLANDSORT</Description>
 		
 	} catch (ex) {
 		set tSC = ex.AsStatus()
-	} s ^bdb($i(^bdb)) = tSC
-	quit ..ErrorHandler(tSC)
-]]></Implementation>
-</Method>
-
-<Method name="GetSources">
-<Description>
-Retrieves all sources (including full text and metadata) in the domain and prints them as JSON</Description>
-<ClassMethod>1</ClassMethod>
-<FormalSpec>pDomainId:%Integer</FormalSpec>
-<ReturnType>%Status</ReturnType>
-<Implementation><![CDATA[
-	set tSC = $$$OK
-	try {
-		set tSC = ..GetSourcesInternal(pDomainId)
-		quit:$$$ISERR(tSC)
-	} catch (ex) {
-		set tSC = ex.AsStatus()
 	}
 	quit ..ErrorHandler(tSC)
 ]]></Implementation>
@@ -456,60 +509,6 @@ Retrieves all sentences (including full text) in the domain containing <var>pEnt
     } catch (ex) {
         set tSC=ex.AsStatus()
     }
-	quit ..ErrorHandler(tSC)
-]]></Implementation>
-</Method>
-
-<Method name="GetSourcesInternal">
-<Description>
-Utility method to print a list of sources to JSON</Description>
-<ClassMethod>1</ClassMethod>
-<FormalSpec><![CDATA[pDomainId:%Integer,pFilter:%iKnow.Filters.Filter="",pFilterByEntity:%String="",&pHighlight,pGetMetadata:%Boolean=1]]></FormalSpec>
-<Private>1</Private>
-<ReturnType>%Status</ReturnType>
-<Implementation><![CDATA[
-	set tSC = $$$OK
-	try {
-		set:$data(%response) %response.ContentType="application/json"
-		
-		set tJSON = ##class(%ZEN.proxyObject).%New()
-		set tJSON.Sources = ##class(%ListOfObjects).%New()
-		set tSC = ##class(%iKnow.Queries.SourceAPI).GetByDomain(.tResult, pDomainId, 1, ..#IKPAGESIZE,  pFilter)
-		quit:$$$ISERR(tSC)
-		set i = ""
-		for {
-			set i = $order(tResult(i), 1, tData)
-			quit:i=""
-			
-			set tSrcId = $lg(tData,1)
-			set tProxy = ##class(%ZEN.proxyObject).%New()
-			set tProxy.SourceId = tSrcId
-			
-			// add fulltext
-			set tProxy.FullText = ..GetHighlightedSource(pDomainId, tSrcId, pFilterByEntity,, .pHighlight, .tSC)
-			quit:$$$ISERR(tSC)
-			
-			// add metadata
-			if pGetMetadata {
-				set tSC = ##class(%iKnow.Queries.MetadataAPI).GetValuesById(.tMetadata, pDomainId, tSrcId)
-				quit:$$$ISERR(tSC)
-				set j = ""
-				for {
-					set j = $order(tMetadata(j),1,tMD)
-					quit:j=""
-					set tFieldName = $li(tMD,2)
-					continue:tFieldName="DateIndexed"
-					set $property(tProxy,tFieldName) = $lg(tMD,3)
-				}
-			}
-			
-			do tJSON.Sources.Insert(tProxy)
-		}
-		
-		do tJSON.%ToJSON(,..#JSONFORMATPARAMS)
-	} catch (ex) {
-		set tSC = ex.AsStatus()
-	}
 	quit ..ErrorHandler(tSC)
 ]]></Implementation>
 </Method>
@@ -994,6 +993,73 @@ Simple error handler, converting a <class>%Status</class> object to a JSON repre
 		quit:$$$ISERR(tSC)
 		
 		write "{}" // dummy output
+		
+	} catch (ex) {
+		set tSC = ex.AsStatus()
+	}
+	quit ..ErrorHandler(tSC)
+]]></Implementation>
+</Method>
+
+<Method name="GetSources">
+<ClassMethod>1</ClassMethod>
+<FormalSpec>pDomainId:%Integer</FormalSpec>
+<ReturnType>%Status</ReturnType>
+<Implementation><![CDATA[
+	set tSC = $$$OK
+	try {
+		
+		set tFilter = ##class(%iKnow.Filters.SimpleMetadataFilter).%New(pDomainId, "DocumentName", "IS NULL")
+		set tSC = ##class(%iKnow.Queries.SourceAPI).GetByDomain(.tSources, pDomainId, 1, 100, tFilter)
+		quit:$$$ISERR(tSC)
+		
+		set tJSON = ##class(%ZEN.proxyObject).%New()
+		set tJSON.sources = ##class(%ListOfObjects).%New()
+		
+		set i = ""
+		for {
+			set i = $order(tSources(i), 1, tSrcData) 
+			quit:i=""
+			
+			set tSource = ##class(%ZEN.proxyObject).%New()
+			set tSource.sourceId = $lg(tSrcData,1)
+			set tSource.externalId = $lg(tSrcData,2)
+			do tJSON.sources.Insert(tSource)
+		}
+		
+		do tJSON.%ToJSON(,..#JSONFORMATPARAMS)
+		
+	} catch (ex) {
+		set tSC = ex.AsStatus()
+	}
+	quit ..ErrorHandler(tSC)
+]]></Implementation>
+</Method>
+
+<Method name="GetSourceText">
+<ClassMethod>1</ClassMethod>
+<FormalSpec>pDomainId:%Integer,pSourceId:%Integer</FormalSpec>
+<ReturnType>%Status</ReturnType>
+<Implementation><![CDATA[
+	set tSC = $$$OK
+	try {
+		
+		// set tSource = ##class(%iKnow.Objects.Source).PKINDEXOpen(pDomainId, pSourceId,, .tSC)
+		set tSC = ##class(%iKnow.Queries.SentenceAPI).GetBySource(.tSentences, pDomainId, pSourceId, 0, 0)
+		quit:$$$ISERR(tSC)
+		set tText="", i=""
+		for {
+			set i = $order(tSentences(i),1,tSentData)
+			quit:i=""
+			
+			set tText = tText_$s(tText="":"",1:$c(13,10,13,10))_$lg(tSentData,2)
+		}
+		
+		set tJSON = ##class(%ZEN.proxyObject).%New()
+		set tJSON.text = tText
+		quit:$$$ISERR(tSC)
+		
+		do tJSON.%ToJSON(,..#JSONFORMATPARAMS)
 		
 	} catch (ex) {
 		set tSC = ex.AsStatus()

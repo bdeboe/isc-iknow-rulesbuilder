@@ -3,6 +3,62 @@
 <Class name="Demo.RulesBuilder.Utils">
 <TimeCreated>63945,50516.299697</TimeCreated>
 
+<Method name="LoadDocument">
+<ClassMethod>1</ClassMethod>
+<FormalSpec>pDocumentName:%String,pDomainId:%Integer,*vSrcIDs</FormalSpec>
+<ReturnType>%Status</ReturnType>
+<Implementation><![CDATA[
+	set tSC = $$$OK
+	try {
+		kill vSrcIDs
+		set tDomainName = $system.iKnow.GetDomainName(pDomainId)
+		
+		
+		// first drop old sources
+		set tRS = ##class(%SQL.Statement).%ExecDirect(,"SELECT SourceId, ExternalId FROM %iKnow_Objects.VirtualSource WHERE DomainId = "_pDomainId_" AND ExternalId LIKE ':SQL:"_$replace(pDocumentName,"'","''")_":%'")
+		while tRS.%Next() {
+			set tSC = ##class(%iKnow.Source.Loader).DeleteVirtualSource(pDomainId, tRS.%Get("SourceId"))
+			quit:$$$ISERR(tSC)
+		}
+		quit:$$$ISERR(tSC)
+		
+		
+		// index new records and match through the classic way (to load multiple virtual sources at once)
+		set tLoader = ##class(%iKnow.Source.Loader).%New(pDomainId)
+		set tLister = ##class(%iKnow.Source.SQL.Lister).%New(pDomainId)
+		set tSC = tLister.ProcessVirtualList("SELECT * FROM Demo_RulesBuilder.Paragraph WHERE FullTextContents != ''", "ID", "DocumentName", "FullTextContents")
+		quit:$$$ISERR(tSC)
+		set tList = tLoader.GetSourceIds()
+		
+		set ptr=0
+		while $listnext(tList,ptr,vSrcID) {
+			set tSC = ##class(%iKnow.Matching.MatchingAPI).MatchSource(pDomainId, -vSrcID)
+			quit:$$$ISERR(tSC)
+			set vSrcIDs(-vSrcID) = $piece(##class(%iKnow.Objects.VirtualSource).PKINDEXOpen(pDomainId, vSrcID).ExternalId,":",*)
+		}
+		
+		
+	} catch (ex) {
+		set tSC = ex.AsStatus()
+	}
+	quit tSC
+]]></Implementation>
+</Method>
+
+<Method name="GetDocumentName">
+<ClassMethod>1</ClassMethod>
+<FormalSpec>pDomainId:%Integer,pSourceId:%Integer</FormalSpec>
+<ReturnType>%String</ReturnType>
+<Implementation><![CDATA[
+	if (pSourceId<0) {
+		quit $piece(##class(%iKnow.Objects.VirtualSource).PKINDEXOpen(pDomainId,$zabs(pSourceId)).ExternalId,":",3)
+	}
+	set tFieldId = ##class(%iKnow.Queries.MetadataAPI).GetFieldId(pDomainId, "DocumentName")
+	quit:'tFieldId ""
+	quit ##class(%iKnow.Queries.MetadataAPI).GetValueById(pDomainId, tFieldId, pSourceId)
+]]></Implementation>
+</Method>
+
 <Method name="CreateRestWebApp">
 <ClassMethod>1</ClassMethod>
 <FormalSpec><![CDATA[&pWebAppName:%String=""]]></FormalSpec>
